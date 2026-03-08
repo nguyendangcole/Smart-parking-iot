@@ -88,10 +88,20 @@ Hệ thống phân quyền dựa trên Email domain `@hcmut.edu.vn` và Metadata
 1. Truy cập [Supabase Console](https://app.supabase.com/).
 2. Tạo project mới.
 3. Mở **SQL Editor** và chạy nội dung file [supabase_setup.sql](./supabase_setup.sql).
-4. File này sẽ tự động:
-   - Tạo bảng `profiles` để lưu thông tin người dùng.
-   - Thiết lập Trigger tự động tạo profile khi User đăng ký qua Auth.
-   - Cấu hình **Row Level Security (RLS)** để bảo mật dữ liệu theo vai trò.
+4. Cấu hình biến môi trường:
+   - Copy file `.env.example` thành `.env`.
+   - Lấy `URL` và `Anon Key` từ **Project Settings -> API** trên Supabase dán vào file `.env`.
+
+```env
+VITE_SUPABASE_URL=https://your-project.supabase.co
+VITE_SUPABASE_ANON_KEY=your-anon-role-key
+```
+
+5. File `src/shared/supabase.ts` đã được thiết lập sẵn để kết nối. Bạn có thể import và sử dụng ngay:
+
+```typescript
+import { supabase } from '../shared/supabase';
+```
 
 ---
 © 2024 HCMUT Smart Parking Team
