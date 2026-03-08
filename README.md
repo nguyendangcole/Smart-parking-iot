@@ -109,12 +109,12 @@ Dưới đây là danh sách các tài khoản gợi ý để bạn tạo trong 
 
 | Đối tượng | Email gợi ý | Mật khẩu | Phân quyền (Role) | View sẽ thấy |
 | :--- | :--- | :--- | :--- | :--- |
-| **Quản trị viên** | `admin@hcmut.edu.vn` | `12345678` | `admin` | Admin View |
-| **Nhân viên** | `operator@hcmut.edu.vn` | `12345678` | `operator` | Operator View |
-| **Sinh viên** | `sinhvien@hcmut.edu.vn` | `12345678` | `student` | Member View |
-| **Giảng viên** | `giangvien@hcmut.edu.vn` | `12345678` | `faculty` | Member View |
-| **Cán bộ** | `canbo@hcmut.edu.vn` | `12345678` | `staff` | Member View |
-| **Khách** | `guest@gmail.com` | `12345678` | `visitor` | Member View |
+| **Quản trị viên** | `admin@hcmut.edu.vn` | `123456` | `admin` | Admin View |
+| **Nhân viên** | `operator@hcmut.edu.vn` | `123456` | `operator` | Operator View |
+| **Sinh viên** | `sinhvien@hcmut.edu.vn` | `123456` | `student` | Member View |
+| **Giảng viên** | `giangvien@hcmut.edu.vn` | `123456` | `faculty` | Member View |
+| **Cán bộ** | `canbo@hcmut.edu.vn` | `123456` | `staff` | Member View |
+| **Khách** | `guest@gmail.com` | `123456` | `visitor` | Member View |
 
 ### 🔐 Cơ chế Đăng nhập & Điều hướng
 

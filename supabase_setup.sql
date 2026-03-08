@@ -1,16 +1,20 @@
 -- SQL Setup for Supabase - HCMUT Smart Parking System
 
--- 1. Create a custom type for user roles
-CREATE TYPE user_role AS ENUM (
-    'student',
-    'graduate',
-    'doctoral',
-    'faculty',
-    'staff',
-    'visitor',
-    'operator',
-    'admin'
-);
+-- 1. Create a custom type for user roles (with check to avoid error if exists)
+DO $$ BEGIN
+    CREATE TYPE user_role AS ENUM (
+        'student',
+        'graduate',
+        'doctoral',
+        'faculty',
+        'staff',
+        'visitor',
+        'operator',
+        'admin'
+    );
+EXCEPTION
+    WHEN duplicate_object THEN null;
+END $$;
 
 -- 2. Create a profiles table that extends auth.users
 CREATE TABLE public.profiles (

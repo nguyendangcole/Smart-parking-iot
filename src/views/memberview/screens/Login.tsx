@@ -26,7 +26,7 @@ interface LoginProps {
 export default function Login({ onLogin, onVisitor }: LoginProps) {
   const [showSSOForm, setShowSSOForm] = useState(false);
   const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('12345678'); // Default password for faster testing
+  const [password, setPassword] = useState('123456'); // Default password for faster testing
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
