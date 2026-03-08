@@ -1,25 +1,31 @@
--- BẢN CẬP NHẬT MOCK DATA ĐẦY ĐỦ (DÙNG CHO SQL EDITOR)
--- Chạy toàn bộ file này để reset/update các tài khoản test
+-- SCRIPT RESET MOCK DATA SIÊU CHUẨN (CHO HOSTED SUPABASE)
+-- Chạy đoạn này trong SQL Editor để đảm bảo đăng nhập được 100%
 
 CREATE EXTENSION IF NOT EXISTS pgcrypto;
 
 DO $$
 DECLARE
     -- Mật khẩu: 123456
-    pass TEXT := '123456';
-    hashed_pass TEXT := crypt('123456', gen_salt('bf'));
+    -- Đây là mã hash bcrypt chuẩn của "123456" với 10 rounds ($2a$10$...)
+    -- Sử dụng hash cứng để tránh sai lệch giữa các phiên bản pgcrypto
+    pass_hash TEXT := '$2a$10$7EqJtq78FeRoPzGuOuuyDe3P/CwH.4065hPMs9EnC94.88o.at02W';
     
-    -- Danh sách email và role tương ứng
-    users_to_create RECORD;
+    u_record RECORD;
+    new_id UUID;
 BEGIN
-    -- Tạo một bảng tạm để lặp qua danh sách users
-    CREATE TEMP TABLE temp_users (
+    -- 1. Dọn dẹp dữ liệu cũ để tránh xung đột
+    DELETE FROM auth.users WHERE email LIKE '%@hcmut.edu.vn' OR email = 'guest@gmail.com';
+    -- Bảng profiles sẽ tự xóa nhờ ON DELETE CASCADE (nếu đã thiết lập) hoặc ta xóa thủ công:
+    DELETE FROM public.profiles WHERE email LIKE '%@hcmut.edu.vn' OR email = 'guest@gmail.com';
+
+    -- 2. Tạo bảng tạm chứa danh sách user
+    CREATE TEMP TABLE temp_users_list (
         email TEXT,
         full_name TEXT,
         role user_role
     ) ON COMMIT DROP;
 
-    INSERT INTO temp_users VALUES 
+    INSERT INTO temp_users_list VALUES 
     ('admin@hcmut.edu.vn', 'Hệ Thống Admin', 'admin'),
     ('operator@hcmut.edu.vn', 'Nhân Viên Vận Hành', 'operator'),
     ('sinhvien@hcmut.edu.vn', 'Nguyễn Văn A (Sinh Viên)', 'student'),
@@ -27,47 +33,51 @@ BEGIN
     ('canbo@hcmut.edu.vn', 'Trần Văn C (Cán Bộ)', 'staff'),
     ('guest@gmail.com', 'Khách Vãng Lai', 'visitor');
 
-    FOR users_to_create IN SELECT * FROM temp_users LOOP
-        DECLARE
-            new_user_id UUID := gen_random_uuid();
-        BEGIN
-            -- 1. Xử lý bảng auth.users
-            IF NOT EXISTS (SELECT 1 FROM auth.users WHERE email = users_to_create.email) THEN
-                INSERT INTO auth.users (id, email, encrypted_password, email_confirmed_at, raw_app_meta_data, raw_user_meta_data, created_at, updated_at, role, aud, confirmation_token)
-                VALUES (
-                    new_user_id, 
-                    users_to_create.email, 
-                    hashed_pass, 
-                    now(), 
-                    '{"provider":"email","providers":["email"]}', 
-                    jsonb_build_object('full_name', users_to_create.full_name), 
-                    now(), 
-                    now(), 
-                    'authenticated', 
-                    'authenticated', 
-                    ''
-                ) RETURNING id INTO new_user_id;
-            ELSE
-                SELECT id INTO new_user_id FROM auth.users WHERE email = users_to_create.email;
-                UPDATE auth.users 
-                SET encrypted_password = hashed_pass, 
-                    updated_at = now(),
-                    raw_user_meta_data = jsonb_build_object('full_name', users_to_create.full_name)
-                WHERE id = new_user_id;
-            END IF;
+    -- 3. Lặp và chèn vào auth.users (với đầy đủ các cờ hệ thống)
+    FOR u_record IN SELECT * FROM temp_users_list LOOP
+        new_id := gen_random_uuid();
+        
+        INSERT INTO auth.users (
+            instance_id, 
+            id, 
+            aud, 
+            role, 
+            email, 
+            encrypted_password, 
+            email_confirmed_at, 
+            raw_app_meta_data, 
+            raw_user_meta_data, 
+            created_at, 
+            updated_at, 
+            confirmation_token, 
+            is_super_admin,
+            last_sign_in_at
+        )
+        VALUES (
+            '00000000-0000-0000-0000-000000000000', -- Mặc định cho hosted
+            new_id,
+            'authenticated',
+            'authenticated',
+            u_record.email,
+            pass_hash,
+            now(),
+            '{"provider":"email","providers":["email"]}',
+            jsonb_build_object('full_name', u_record.full_name),
+            now(),
+            now(),
+            '',
+            false,
+            now()
+        );
 
-            -- 2. Xử lý bảng public.profiles
-            INSERT INTO public.profiles (id, email, full_name, role)
-            VALUES (new_user_id, users_to_create.email, users_to_create.full_name, users_to_create.role)
-            ON CONFLICT (id) DO UPDATE 
-            SET role = users_to_create.role, 
-                full_name = users_to_create.full_name,
-                email = users_to_create.email;
-        END;
+        -- Chèn vào bảng profiles của bạn
+        INSERT INTO public.profiles (id, email, full_name, role)
+        VALUES (new_id, u_record.email, u_record.full_name, u_record.role);
     END LOOP;
+
 END $$;
 
--- THÊM DỮ LIỆU BÃI XE (PARKING SLOTS)
+-- Cập nhật lại bãi xe cho chắc chắn
 INSERT INTO public.parking_slots (slot_number, is_occupied, zone)
 VALUES 
 ('A-01', false, 'Khu A - Tòa A1'),
