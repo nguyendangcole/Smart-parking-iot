@@ -1,4 +1,4 @@
--- SCRIPT RESET MOCK DATA PHỎNG THEO CƠ CHẾ SUPABASE AUTH CHUẨN
+-- SCRIPT RESET MOCK DATA PHỎNG THEO CƠ CHẾ SUPABASE AUTH CHUẨN (FIXED)
 -- Chạy đoạn này để đảm bảo mật khẩu '123456' hoạt động 100%
 
 CREATE EXTENSION IF NOT EXISTS pgcrypto;
@@ -20,7 +20,7 @@ BEGIN
         'guest@gmail.com'
     );
     
-    -- Xóa cả bên profiles cho chắc (Dù có cascade)
+    -- Xóa cả bên profiles cho chắc
     DELETE FROM public.profiles WHERE email IN (
         'admin@hcmut.edu.vn', 
         'operator@hcmut.edu.vn', 
@@ -49,37 +49,36 @@ BEGIN
     FOR u_record IN SELECT * FROM temp_users_fix LOOP
         new_user_id := gen_random_uuid();
         
+        -- Lưu ý: Không chèn vào cột confirmed_at vì nó là generated column ở một số phiên bản Supabase
         INSERT INTO auth.users (
             instance_id, 
             id, 
             aud, 
             role, 
             email, 
-            encrypted_password, -- Dùng chính database để mã hóa '123456'
+            encrypted_password, 
             email_confirmed_at, 
             raw_app_meta_data, 
             raw_user_meta_data, 
             created_at, 
             updated_at, 
             confirmation_token, 
-            is_super_admin,
-            confirmed_at
+            is_super_admin
         )
         VALUES (
             '00000000-0000-0000-0000-000000000000',
             new_user_id,
             'authenticated',
-            'authenticated', -- Supabase yêu cầu role ngoại là 'authenticated'
+            'authenticated',
             u_record.email,
-            crypt(test_pass, gen_salt('bf')), -- Mã hóa tại chỗ '123456'
+            crypt(test_pass, gen_salt('bf')),
             now(),
             '{"provider":"email","providers":["email"]}',
             jsonb_build_object('full_name', u_record.full_name),
             now(),
             now(),
             '',
-            false,
-            now()
+            false
         );
 
         -- Chèn profile tương ứng
@@ -94,5 +93,7 @@ INSERT INTO public.parking_slots (slot_number, is_occupied, zone)
 VALUES 
 ('A-01', false, 'Khu A - Tòa A1'),
 ('A-02', true, 'Khu A - Tòa A1'),
-('A-03', false, 'Khu A - Tòa A2')
+('A-03', false, 'Khu A - Tòa A2'),
+('B-01', true, 'Khu B - Ký túc xá'),
+('B-02', false, 'Khu B - Ký túc xá')
 ON CONFLICT (slot_number) DO NOTHING;
