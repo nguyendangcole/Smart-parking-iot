@@ -75,7 +75,7 @@ export default function Settings({ onLogout }: SettingsProps) {
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
               <label className="text-xs font-bold text-slate-400 uppercase tracking-wider">Full Name</label>
-              <p className="text-lg font-semibold">{profile?.full_name || 'Khách'}</p>
+              <p className="text-lg font-semibold">{profile?.full_name || 'Guest'}</p>
             </div>
             <div>
               <label className="text-xs font-bold text-slate-400 uppercase tracking-wider">Role</label>
@@ -166,7 +166,7 @@ export default function Settings({ onLogout }: SettingsProps) {
           <div className="bg-white rounded-2xl border border-slate-200 overflow-hidden divide-y divide-slate-100">
             {[
               { label: 'Parking Sessions', sub: 'Alerts when session starts or ends', checked: true },
-              { label: 'Low Balance Alerts', sub: 'Notify when balance is below 50.000đ', checked: true },
+              { label: 'Low Balance Alerts', sub: 'Notify when balance is below 50,000 VND', checked: true },
               { label: 'Promotional Offers', sub: 'New parking deals & campus news', checked: false },
             ].map((item, i) => (
               <div key={i} className="flex items-center justify-between p-4">
@@ -195,7 +195,7 @@ export default function Settings({ onLogout }: SettingsProps) {
               </div>
               <select className="bg-slate-50 border-none rounded-lg text-sm font-bold text-primary focus:ring-primary py-1 px-3">
                 <option>English</option>
-                <option>Tiếng Việt</option>
+                <option>Vietnamese</option>
               </select>
             </div>
             <div className="flex items-center justify-between p-4">

@@ -17,7 +17,7 @@ export default function AdminApp() {
   const [activeTab, setActiveTab] = useState<Tab>('dashboard');
 
   useEffect(() => {
-    // Chỉ chuyển hướng nếu TẢI XONG mà KHÔNG CÓ profile ADMIN và KHÔNG PHẢI LỖI MẠNG
+    // Only redirect if loading is complete and no admin profile exists AND no network error
     if (!loading && !fetchError && (!profile || profile.role !== 'admin')) {
       const timer = setTimeout(() => {
         window.location.href = '/';

@@ -32,7 +32,7 @@ export default function Login({ onLogin, onVisitor }: LoginProps) {
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!email || !password) {
-      setError('Vui lòng nhập đầy đủ Email và Mật khẩu.');
+      setError('Please enter both Email and Password.');
       return;
     }
 
@@ -53,9 +53,9 @@ export default function Login({ onLogin, onVisitor }: LoginProps) {
     } catch (err: any) {
       console.error('Login error:', err);
       if (err.message === 'Invalid login credentials') {
-        setError('Email hoặc mật khẩu không chính xác.');
+        setError('Incorrect Email or Password.');
       } else {
-        setError(err.message || 'Đăng nhập thất bại. Vui lòng thử lại.');
+        setError(err.message || 'Login failed. Please try again.');
       }
     } finally {
       setLoading(false);

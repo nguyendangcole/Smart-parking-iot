@@ -74,7 +74,7 @@ export default function Sidebar({ currentScreen, onNavigate }: SidebarProps) {
             )}
           </div>
           <div className="flex-1 min-w-0">
-            <p className="text-xs font-bold truncate">{profile?.full_name || 'Khách'}</p>
+            <p className="text-xs font-bold truncate">{profile?.full_name || 'Guest'}</p>
             <p className="text-[10px] text-slate-500 uppercase font-medium">{profile?.role || 'Visitor'}</p>
           </div>
           <button onClick={logout} className="text-slate-400 hover:text-red-500 transition-colors">
