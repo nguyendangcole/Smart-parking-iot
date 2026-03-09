@@ -18,11 +18,14 @@ import {
   LogOut
 } from 'lucide-react';
 
+import { useProfile } from '../../../shared/hooks/useProfile';
+
 export default function Settings() {
+  const { profile, logout } = useProfile();
   const navigate = useNavigate();
 
   const handleLogout = async () => {
-    await supabase.auth.signOut();
+    await logout();
     navigate('/');
   };
 
@@ -45,13 +48,19 @@ export default function Settings() {
           </div>
           <div className="p-8 flex flex-col md:flex-row gap-8 items-start">
             <div className="relative">
-              <div className="w-32 h-32 rounded-full overflow-hidden border-4 border-slate-100">
-                <img
-                  src="https://picsum.photos/seed/profile/200/200"
-                  alt="Profile"
-                  className="w-full h-full object-cover"
-                  referrerPolicy="no-referrer"
-                />
+              <div className="w-32 h-32 rounded-full overflow-hidden border-4 border-slate-100 flex items-center justify-center bg-primary/10 text-primary">
+                {profile?.full_name ? (
+                  <span className="text-4xl font-black">
+                    {profile.full_name.split(' ').map(n => n[0]).join('').toUpperCase()}
+                  </span>
+                ) : (
+                  <img
+                    src="https://picsum.photos/seed/profile/200/200"
+                    alt="Profile"
+                    className="w-full h-full object-cover"
+                    referrerPolicy="no-referrer"
+                  />
+                )}
               </div>
               <button className="absolute bottom-0 right-0 p-2 bg-primary text-white rounded-full shadow-lg border-2 border-white hover:scale-110 transition-transform">
                 <Camera size={16} />
@@ -60,19 +69,19 @@ export default function Settings() {
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6 flex-1">
               <div>
                 <label className="block text-xs font-bold text-slate-400 uppercase mb-1">Full Name</label>
-                <p className="text-base font-semibold">Nguyen Van A</p>
+                <p className="text-base font-semibold">{profile?.full_name || 'Operator'}</p>
               </div>
               <div>
                 <label className="block text-xs font-bold text-slate-400 uppercase mb-1">Operator ID</label>
-                <p className="text-base font-semibold">#10293</p>
+                <p className="text-base font-semibold text-xs truncate">{profile?.id || '#00000'}</p>
               </div>
               <div>
-                <label className="block text-xs font-bold text-slate-400 uppercase mb-1">Shift Hours</label>
-                <p className="text-base font-semibold">Morning (06:00 - 14:00)</p>
+                <label className="block text-xs font-bold text-slate-400 uppercase mb-1">Role</label>
+                <p className="text-base font-semibold uppercase">{profile?.role || 'Staff'}</p>
               </div>
               <div>
                 <label className="block text-xs font-bold text-slate-400 uppercase mb-1">Contact Email</label>
-                <p className="text-base font-semibold text-primary">operator@hcmut.edu.vn</p>
+                <p className="text-base font-semibold text-primary">{profile?.email || 'N/A'}</p>
               </div>
             </div>
           </div>

@@ -1,29 +1,36 @@
 import React from 'react';
-import { 
-  Bell, 
-  HelpCircle, 
-  Edit, 
-  User, 
-  Shield, 
-  Lock, 
-  Link as LinkIcon, 
-  Fingerprint, 
-  Bell as BellIcon, 
-  Languages, 
-  Moon, 
+import {
+  Bell,
+  HelpCircle,
+  Edit,
+  User,
+  Shield,
+  Lock,
+  Link as LinkIcon,
+  Fingerprint,
+  Bell as BellIcon,
+  Languages,
+  Moon,
   LogOut,
   ChevronRight,
   Settings as SettingsIcon
 } from 'lucide-react';
 import { motion } from 'motion/react';
+import { useProfile } from '../../../shared/hooks/useProfile';
 
 interface SettingsProps {
   onLogout: () => void;
 }
 
 export default function Settings({ onLogout }: SettingsProps) {
+  const { profile, logout } = useProfile();
+
+  const handleLogout = async () => {
+    await logout();
+    onLogout();
+  };
   return (
-    <motion.div 
+    <motion.div
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
       className="space-y-8 max-w-5xl mx-auto w-full"
@@ -46,13 +53,19 @@ export default function Settings({ onLogout }: SettingsProps) {
 
       <section className="bg-white rounded-2xl p-8 border border-slate-200 flex flex-col md:flex-row gap-8 items-center md:items-start">
         <div className="relative">
-          <div className="w-32 h-32 rounded-full overflow-hidden border-4 border-primary/20 bg-slate-100">
-            <img 
-              alt="Profile" 
-              className="w-full h-full object-cover" 
-              src="https://picsum.photos/seed/profile/200/200" 
-              referrerPolicy="no-referrer"
-            />
+          <div className="w-32 h-32 rounded-full overflow-hidden border-4 border-primary/20 bg-primary/10 flex items-center justify-center text-primary">
+            {profile?.full_name ? (
+              <span className="text-4xl font-black">
+                {profile.full_name.split(' ').map(n => n[0]).join('').toUpperCase()}
+              </span>
+            ) : (
+              <img
+                alt="Profile"
+                className="w-full h-full object-cover"
+                src="https://picsum.photos/seed/profile/200/200"
+                referrerPolicy="no-referrer"
+              />
+            )}
           </div>
           <button className="absolute bottom-1 right-1 bg-primary text-white p-2 rounded-full shadow-lg border-2 border-white">
             <Edit size={14} />
@@ -62,19 +75,19 @@ export default function Settings({ onLogout }: SettingsProps) {
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
               <label className="text-xs font-bold text-slate-400 uppercase tracking-wider">Full Name</label>
-              <p className="text-lg font-semibold">Nguyen Van A</p>
+              <p className="text-lg font-semibold">{profile?.full_name || 'Khách'}</p>
             </div>
             <div>
-              <label className="text-xs font-bold text-slate-400 uppercase tracking-wider">Student ID</label>
-              <p className="text-lg font-semibold">2110000</p>
+              <label className="text-xs font-bold text-slate-400 uppercase tracking-wider">Role</label>
+              <p className="text-lg font-semibold uppercase">{profile?.role || 'Visitor'}</p>
             </div>
             <div>
               <label className="text-xs font-bold text-slate-400 uppercase tracking-wider">Email Address</label>
-              <p className="text-lg font-semibold">a.nguyen@hcmut.edu.vn</p>
+              <p className="text-lg font-semibold">{profile?.email || 'N/A'}</p>
             </div>
             <div>
-              <label className="text-xs font-bold text-slate-400 uppercase tracking-wider">Phone Number</label>
-              <p className="text-lg font-semibold">+84 90 123 4567</p>
+              <label className="text-xs font-bold text-slate-400 uppercase tracking-wider">Account ID</label>
+              <p className="text-lg font-semibold truncate text-xs">{profile?.id || 'N/A'}</p>
             </div>
           </div>
           <button className="px-6 py-2 bg-primary/10 text-primary font-bold rounded-lg hover:bg-primary/20 transition-all text-sm">Edit Profile Details</button>
@@ -194,8 +207,8 @@ export default function Settings({ onLogout }: SettingsProps) {
               </div>
               <Toggle />
             </div>
-            <button 
-              onClick={onLogout}
+            <button
+              onClick={handleLogout}
               className="w-full flex items-center justify-between p-4 bg-red-50 hover:bg-red-100 transition-colors"
             >
               <div className="flex items-center gap-3">
@@ -221,7 +234,7 @@ export default function Settings({ onLogout }: SettingsProps) {
 function Toggle({ checked = false }: { checked?: boolean }) {
   const [isOn, setIsOn] = React.useState(checked);
   return (
-    <button 
+    <button
       onClick={() => setIsOn(!isOn)}
       className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none ${isOn ? 'bg-primary' : 'bg-slate-200'}`}
     >

@@ -1,14 +1,15 @@
 import React from 'react';
-import { 
-  LayoutDashboard, 
-  History, 
-  Wallet, 
-  Settings as SettingsIcon, 
-  Headset, 
+import {
+  LayoutDashboard,
+  History,
+  Wallet,
+  Settings as SettingsIcon,
+  Headset,
   LogOut,
   ParkingCircle
 } from 'lucide-react';
 import { Screen } from '../types';
+import { useProfile } from '../../../shared/hooks/useProfile';
 
 interface SidebarProps {
   currentScreen: Screen;
@@ -23,6 +24,8 @@ export default function Sidebar({ currentScreen, onNavigate }: SidebarProps) {
     { id: 'support', label: 'Support', icon: Headset },
     { id: 'settings', label: 'Settings', icon: SettingsIcon },
   ];
+
+  const { profile, logout } = useProfile();
 
   return (
     <aside className="fixed left-0 top-0 h-screen w-72 bg-white/80 backdrop-blur-xl border-r border-slate-200/50 p-6 flex flex-col justify-between z-50">
@@ -56,19 +59,25 @@ export default function Sidebar({ currentScreen, onNavigate }: SidebarProps) {
       {/* Profile Mini */}
       <div className="bg-slate-100 rounded-2xl p-4">
         <div className="flex items-center gap-3">
-          <div className="size-10 rounded-full bg-slate-300 overflow-hidden">
-            <img 
-              className="w-full h-full object-cover" 
-              src="https://picsum.photos/seed/user/100/100" 
-              alt="User"
-              referrerPolicy="no-referrer"
-            />
+          <div className="size-10 rounded-full bg-primary/10 flex items-center justify-center text-primary overflow-hidden">
+            {profile?.full_name ? (
+              <span className="font-bold text-sm tracking-tighter">
+                {profile.full_name.split(' ').map(n => n[0]).join('').toUpperCase()}
+              </span>
+            ) : (
+              <img
+                className="w-full h-full object-cover"
+                src="https://picsum.photos/seed/user/100/100"
+                alt="User"
+                referrerPolicy="no-referrer"
+              />
+            )}
           </div>
           <div className="flex-1 min-w-0">
-            <p className="text-xs font-bold truncate">Le Hoang Minh</p>
-            <p className="text-[10px] text-slate-500">Standard Member</p>
+            <p className="text-xs font-bold truncate">{profile?.full_name || 'Khách'}</p>
+            <p className="text-[10px] text-slate-500 uppercase font-medium">{profile?.role || 'Visitor'}</p>
           </div>
-          <button onClick={() => onNavigate('login')} className="text-slate-400 hover:text-red-500 transition-colors">
+          <button onClick={logout} className="text-slate-400 hover:text-red-500 transition-colors">
             <LogOut size={16} />
           </button>
         </div>

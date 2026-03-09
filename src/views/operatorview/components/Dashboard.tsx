@@ -1,8 +1,8 @@
 import React from 'react';
-import { 
-  Car, 
-  Cpu, 
-  AlertTriangle, 
+import {
+  Car,
+  Cpu,
+  AlertTriangle,
   CircleDollarSign,
   TrendingUp,
   RefreshCw,
@@ -12,38 +12,40 @@ import {
   LogIn,
   LogOut
 } from 'lucide-react';
+import { useProfile } from '../../../shared/hooks/useProfile';
 
 export default function Dashboard() {
+  const { profile } = useProfile();
   const kpis = [
-    { 
-      title: 'Total Occupancy', 
-      value: '856 / 1,000', 
-      trend: '+2.4%', 
-      icon: Car, 
+    {
+      title: 'Total Occupancy',
+      value: '856 / 1,000',
+      trend: '+2.4%',
+      icon: Car,
       color: 'primary',
-      progress: 85.6 
+      progress: 85.6
     },
-    { 
-      title: 'Active Gates', 
-      value: '12 / 12', 
-      trend: 'Stable', 
-      icon: Cpu, 
+    {
+      title: 'Active Gates',
+      value: '12 / 12',
+      trend: 'Stable',
+      icon: Cpu,
       color: 'emerald',
       sub: 'Last checked 2 mins ago'
     },
-    { 
-      title: 'Recent Alerts', 
-      value: '3 Pending', 
-      trend: '-12%', 
-      icon: AlertTriangle, 
+    {
+      title: 'Recent Alerts',
+      value: '3 Pending',
+      trend: '-12%',
+      icon: AlertTriangle,
       color: 'orange',
       sub: '1 Critical, 2 Maintenance'
     },
-    { 
-      title: 'Revenue Today', 
-      value: '14.5M VND', 
-      trend: '+15%', 
-      icon: CircleDollarSign, 
+    {
+      title: 'Revenue Today',
+      value: '14.5M VND',
+      trend: '+15%',
+      icon: CircleDollarSign,
       color: 'emerald',
       sub: 'Target: 18.0M VND'
     },
@@ -69,8 +71,8 @@ export default function Dashboard() {
       <header className="flex items-center justify-between mb-8">
         <div className="relative w-full max-w-xl">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
-          <input 
-            type="text" 
+          <input
+            type="text"
             placeholder="Search plates, transactions, or gates..."
             className="w-full bg-white border border-slate-200 rounded-full py-2.5 pl-10 pr-4 text-sm focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all outline-none"
           />
@@ -82,11 +84,17 @@ export default function Dashboard() {
           </button>
           <div className="flex items-center gap-3 pl-4 border-l border-slate-200">
             <div className="text-right hidden sm:block">
-              <p className="text-sm font-bold">Nguyen Van A</p>
-              <p className="text-xs text-slate-500">Chief Operator</p>
+              <p className="text-sm font-bold">{profile?.full_name || 'Nguyen Van A'}</p>
+              <p className="text-xs text-slate-500">{profile?.role || 'Chief Operator'}</p>
             </div>
-            <div className="w-10 h-10 rounded-full border-2 border-primary/20 overflow-hidden">
-              <img src="https://picsum.photos/seed/avatar/100/100" alt="Avatar" className="w-full h-full object-cover" referrerPolicy="no-referrer" />
+            <div className="w-10 h-10 rounded-full border-2 border-primary/20 overflow-hidden flex items-center justify-center bg-primary/10 text-primary">
+              {profile?.full_name ? (
+                <span className="font-bold text-sm">
+                  {profile.full_name.split(' ').map(n => n[0]).join('').toUpperCase()}
+                </span>
+              ) : (
+                <img src="https://picsum.photos/seed/avatar/100/100" alt="Avatar" className="w-full h-full object-cover" referrerPolicy="no-referrer" />
+              )}
             </div>
           </div>
         </div>
@@ -129,10 +137,10 @@ export default function Dashboard() {
           {gates.map((gate) => (
             <div key={gate.id} className="bg-white rounded-2xl overflow-hidden shadow-sm border border-slate-200 group">
               <div className="relative aspect-video bg-slate-200 overflow-hidden">
-                <img 
-                  src={gate.img} 
-                  alt={gate.name} 
-                  className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" 
+                <img
+                  src={gate.img}
+                  alt={gate.name}
+                  className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
                   referrerPolicy="no-referrer"
                 />
                 <div className="absolute top-2 left-2 bg-black/60 text-white text-[10px] px-2 py-0.5 rounded backdrop-blur-sm">REC 01:24:00</div>
@@ -145,9 +153,8 @@ export default function Dashboard() {
               <div className="p-4">
                 <div className="flex items-center justify-between mb-2">
                   <h4 className="font-bold text-slate-800">Gate {gate.id} - {gate.name}</h4>
-                  <span className={`px-2 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider ${
-                    gate.status === 'Open' ? 'bg-emerald-100 text-emerald-600' : 'bg-slate-100 text-slate-500'
-                  }`}>
+                  <span className={`px-2 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider ${gate.status === 'Open' ? 'bg-emerald-100 text-emerald-600' : 'bg-slate-100 text-slate-500'
+                    }`}>
                     {gate.status}
                   </span>
                 </div>

@@ -1,21 +1,23 @@
 import React from 'react';
-import { 
-  Bell, 
-  Calendar, 
-  TrendingUp, 
-  Wallet, 
-  Timer, 
-  Star, 
-  PlusCircle, 
-  Search, 
+import {
+  Bell,
+  Calendar,
+  TrendingUp,
+  Wallet,
+  Timer,
+  Star,
+  PlusCircle,
+  Search,
   History,
   Building2
 } from 'lucide-react';
 import { motion } from 'motion/react';
+import { useProfile } from '../../../shared/hooks/useProfile';
 
 export default function Dashboard() {
+  const { profile } = useProfile();
   return (
-    <motion.div 
+    <motion.div
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
       className="space-y-8"
@@ -23,7 +25,9 @@ export default function Dashboard() {
       {/* Topbar */}
       <header className="flex items-center justify-between">
         <div>
-          <h2 className="text-3xl font-extrabold tracking-tight text-slate-900">Good morning, Minh! 👋</h2>
+          <h2 className="text-3xl font-extrabold tracking-tight text-slate-900">
+            Good morning, {profile?.full_name?.split(' ')[0] || 'Member'}! 👋
+          </h2>
           <p className="text-slate-500 font-medium">Here's what's happening with your parking today.</p>
         </div>
         <div className="flex items-center gap-4">
@@ -142,7 +146,7 @@ export default function Dashboard() {
             ].map((item, i) => (
               <div key={i} className="flex-1 flex flex-col items-center gap-2">
                 <div className="w-full bg-slate-100 rounded-t-lg relative group h-full">
-                  <div 
+                  <div
                     style={{ height: item.height }}
                     className={`absolute bottom-0 w-full transition-all rounded-t-lg ${item.active ? 'bg-primary shadow-lg shadow-primary/20' : 'bg-primary/40 group-hover:bg-primary'}`}
                   ></div>

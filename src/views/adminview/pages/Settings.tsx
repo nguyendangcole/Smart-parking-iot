@@ -1,11 +1,13 @@
-import { supabase } from '../../../shared/supabase';
+import React from 'react';
 import { useNavigate } from 'react-router-dom';
+import { useProfile } from '../../../shared/hooks/useProfile';
 
 export const Settings: React.FC = () => {
+  const { profile, logout } = useProfile();
   const navigate = useNavigate();
 
   const handleLogout = async () => {
-    await supabase.auth.signOut();
+    await logout();
     navigate('/');
   };
 
@@ -27,35 +29,41 @@ export const Settings: React.FC = () => {
             <div className="flex items-center gap-6">
               <div className="relative group">
                 <div className="w-24 h-24 rounded-2xl bg-primary/10 flex items-center justify-center text-primary overflow-hidden border-2 border-primary/20">
-                  <span className="material-symbols-outlined text-4xl">person</span>
+                  {profile?.full_name ? (
+                    <span className="text-3xl font-black">
+                      {profile.full_name.split(' ').map(n => n[0]).join('').toUpperCase()}
+                    </span>
+                  ) : (
+                    <span className="material-symbols-outlined text-4xl">person</span>
+                  )}
                 </div>
                 <button className="absolute -bottom-2 -right-2 w-8 h-8 bg-white border border-slate-200 rounded-full flex items-center justify-center text-slate-600 shadow-sm hover:text-primary transition-colors">
                   <span className="material-symbols-outlined text-sm">edit</span>
                 </button>
               </div>
               <div>
-                <h4 className="font-bold text-lg">Nguyen Duy Dang</h4>
-                <p className="text-sm text-slate-500">Super Administrator • ID: #HCMUT-001</p>
-                <p className="text-xs text-slate-400 mt-1">nguyenduydang225@gmail.com</p>
+                <h4 className="font-bold text-lg">{profile?.full_name || 'Administrator'}</h4>
+                <p className="text-sm text-slate-500 uppercase tracking-tighter font-semibold">{profile?.role || 'Admin'} • ID: #{profile?.id?.slice(0, 8) || '00000'}</p>
+                <p className="text-xs text-slate-400 mt-1">{profile?.email || 'N/A'}</p>
               </div>
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div className="space-y-1">
                 <label className="text-xs font-bold text-slate-500 uppercase tracking-wider">Full Name</label>
-                <input className="w-full px-4 py-2 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:ring-2 focus:ring-primary/20 outline-none" defaultValue="Nguyen Duy Dang" type="text" />
+                <input className="w-full px-4 py-2 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:ring-2 focus:ring-primary/20 outline-none" defaultValue={profile?.full_name || ''} type="text" />
               </div>
               <div className="space-y-1">
                 <label className="text-xs font-bold text-slate-500 uppercase tracking-wider">Email Address</label>
-                <input className="w-full px-4 py-2 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:ring-2 focus:ring-primary/20 outline-none" defaultValue="nguyenduydang225@gmail.com" type="email" />
+                <input className="w-full px-4 py-2 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:ring-2 focus:ring-primary/20 outline-none" defaultValue={profile?.email || ''} type="email" />
               </div>
               <div className="space-y-1">
-                <label className="text-xs font-bold text-slate-500 uppercase tracking-wider">Phone Number</label>
-                <input className="w-full px-4 py-2 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:ring-2 focus:ring-primary/20 outline-none" defaultValue="+84 123 456 789" type="tel" />
+                <label className="text-xs font-bold text-slate-500 uppercase tracking-wider">Role</label>
+                <input className="w-full px-4 py-2 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:ring-2 focus:ring-primary/20 outline-none" defaultValue={profile?.role || ''} type="text" readOnly />
               </div>
               <div className="space-y-1">
-                <label className="text-xs font-bold text-slate-500 uppercase tracking-wider">Department</label>
-                <input className="w-full px-4 py-2 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:ring-2 focus:ring-primary/20 outline-none" defaultValue="Infrastructure Management" type="text" />
+                <label className="text-xs font-bold text-slate-500 uppercase tracking-wider">Account ID</label>
+                <input className="w-full px-4 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs focus:ring-2 focus:ring-primary/20 outline-none" defaultValue={profile?.id || ''} type="text" readOnly />
               </div>
             </div>
             <div className="flex justify-end">
