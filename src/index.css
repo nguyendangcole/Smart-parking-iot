@@ -14,6 +14,11 @@
   --color-background-dark: #0f1923;
 }
 
+.admin-theme {
+  --color-primary: #ec5b13;
+  --color-primary-dark: #c5480d;
+}
+
 @layer base {
   body {
     @apply bg-background-light text-slate-900 font-sans antialiased;

@@ -33,7 +33,7 @@ export const IoTMonitoring: React.FC = () => {
         </div>
         <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm">
           <div className="flex justify-between items-start mb-4">
-            <div className="p-2 bg-accent-cyan/10 rounded-lg text-accent-cyan">
+            <div className="p-2 bg-primary/10 rounded-lg text-primary">
               <span className="material-symbols-outlined">videocam</span>
             </div>
             <span className="text-emerald-500 text-[10px] font-bold bg-emerald-500/10 px-2 py-1 rounded-full">100% ONLINE</span>
@@ -74,7 +74,7 @@ export const IoTMonitoring: React.FC = () => {
               </div>
             </div>
             <div className="relative h-[400px] bg-slate-100 overflow-hidden">
-              <div className="absolute inset-0 opacity-20" style={{ backgroundImage: 'radial-gradient(#0054a3 1px, transparent 1px)', backgroundSize: '20px 20px' }}></div>
+              <div className="absolute inset-0 opacity-20" style={{ backgroundImage: 'radial-gradient(var(--color-primary) 1px, transparent 1px)', backgroundSize: '20px 20px' }}></div>
               <div className="absolute top-1/4 left-1/3 w-48 h-32 bg-white/80 border-2 border-primary/20 rounded-xl flex items-center justify-center font-bold text-primary/40 text-xs uppercase tracking-widest">Zone A</div>
               <div className="absolute top-1/2 left-1/2 w-64 h-40 bg-white/80 border-2 border-primary/20 rounded-xl flex items-center justify-center font-bold text-primary/40 text-xs uppercase tracking-widest">Zone B</div>
               <div className="absolute top-10 left-10 flex flex-col gap-2">

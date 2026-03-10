@@ -28,8 +28,8 @@ export default function AdminApp() {
 
   if (fetchError) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-slate-50 text-slate-500 font-medium p-8 text-center">
-        <div className="bg-white p-8 rounded-2xl shadow-xl border border-rose-100 max-w-sm w-full mx-auto">
+      <div className="h-screen flex items-center justify-center bg-slate-50 p-6 admin-theme">
+        <div className="max-w-md w-full bg-white rounded-3xl p-8 shadow-xl border border-slate-200 text-center">
           <div className="w-16 h-16 bg-rose-50 text-rose-500 rounded-full flex items-center justify-center mx-auto mb-4">
             <span className="material-symbols-outlined text-3xl">wifi_off</span>
           </div>
@@ -46,36 +46,23 @@ export default function AdminApp() {
     );
   }
 
-  if (!loading && (!profile || profile.role !== 'admin')) {
+  if (loading || !profile || profile.role !== 'admin') {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-slate-50 text-slate-500 font-medium p-8 text-center">
-        <div className="bg-white p-8 rounded-2xl shadow-xl border border-slate-100 max-w-sm w-full">
-          <div className="w-16 h-16 bg-red-50 text-red-500 rounded-full flex items-center justify-center mx-auto mb-4">
-            <span className="material-symbols-outlined text-3xl">lock</span>
-          </div>
-          <h2 className="text-base font-bold text-slate-800 mb-2">Access Denied</h2>
-          <p className="text-xs text-slate-500 mb-6">Unauthorized access or session expired.</p>
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto mb-2"></div>
+      <div className="h-screen bg-white flex flex-col items-center justify-center p-6 admin-theme">
+        <div className="w-16 h-16 border-4 border-primary/20 border-t-primary rounded-full animate-spin"></div>
+        <div className="mt-8 text-center">
+          <h2 className="text-xl font-bold text-slate-900 mb-2">
+            {loading ? 'Entering Infrastructure Console' : 'Access Denied'}
+          </h2>
+          <p className="text-sm text-slate-500">
+            {loading ? 'Authenticating secure connection...' : 'Redirecting to home page...'}
+          </p>
         </div>
       </div>
     );
   }
 
   const renderContent = () => {
-    // Priority 2: Standard Skeleton Loading
-    if (loading && !profile) return (
-      <div className="p-8 space-y-4 animate-pulse">
-        <div className="h-8 bg-slate-200 rounded w-1/4 mb-10"></div>
-        <div className="h-32 bg-slate-100 rounded-2xl shadow-sm"></div>
-        <div className="grid grid-cols-4 gap-6">
-          <div className="h-28 bg-slate-100 rounded-2xl"></div>
-          <div className="h-28 bg-slate-100 rounded-2xl"></div>
-          <div className="h-28 bg-slate-100 rounded-2xl"></div>
-          <div className="h-28 bg-slate-100 rounded-2xl"></div>
-        </div>
-        <div className="h-64 bg-slate-50 rounded-2xl border border-slate-100"></div>
-      </div>
-    );
     switch (activeTab) {
       case 'dashboard':
         return <Dashboard />;
@@ -97,7 +84,7 @@ export default function AdminApp() {
   };
 
   return (
-    <div className="flex min-h-screen bg-background-light">
+    <div className="flex min-h-screen bg-background-light admin-theme">
       <Sidebar activeTab={activeTab} setActiveTab={setActiveTab} />
       <main className="flex-1 overflow-y-auto h-screen">
         {renderContent()}
@@ -105,4 +92,3 @@ export default function AdminApp() {
     </div>
   );
 }
-

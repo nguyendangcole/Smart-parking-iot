@@ -21,7 +21,7 @@ export const Dashboard: React.FC = () => {
         </div>
         <div className="glass p-6 rounded-2xl shadow-sm border border-slate-200/50">
           <div className="flex justify-between items-start mb-4">
-            <div className="p-2 bg-accent-cyan/10 rounded-lg text-accent-cyan">
+            <div className="p-2 bg-primary/10 rounded-lg text-primary">
               <span className="material-symbols-outlined">group</span>
             </div>
             <span className="text-rose-500 text-xs font-bold bg-rose-500/10 px-2 py-1 rounded-full">-2.1%</span>
@@ -102,7 +102,7 @@ export const Dashboard: React.FC = () => {
                 <p className="text-[10px] font-bold text-slate-500 uppercase">Zone C (Level 2)</p>
                 <p className="text-xl font-bold text-primary mt-1">45%</p>
                 <div className="mt-2 h-1.5 w-full bg-slate-200 rounded-full overflow-hidden">
-                  <div className="h-full bg-accent-cyan rounded-full" style={{ width: '45%' }}></div>
+                  <div className="h-full bg-primary rounded-full" style={{ width: '45%' }}></div>
                 </div>
               </div>
               <div className="p-4 rounded-xl bg-primary/5 border border-primary/10">
