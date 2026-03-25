@@ -1,10 +1,52 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useProfile } from '../../../shared/hooks/useProfile';
+import { supabase } from '../../../shared/supabase';
 
 export const Settings: React.FC = () => {
   const { profile, logout } = useProfile();
   const navigate = useNavigate();
+
+  const [fullName, setFullName] = useState(profile?.full_name || '');
+  const [email, setEmail] = useState(profile?.email || '');
+  const [isSaving, setIsSaving] = useState(false);
+  const [saveMessage, setSaveMessage] = useState({ text: '', type: '' });
+
+  const [darkMode, setDarkMode] = useState(false);
+  const [notifications, setNotifications] = useState(true);
+  const [language, setLanguage] = useState('English (US)');
+
+  useEffect(() => {
+    if (profile) {
+      setFullName(profile.full_name || '');
+      setEmail(profile.email || '');
+    }
+  }, [profile]);
+
+  const handleSaveProfile = async () => {
+    if (!profile?.id) return;
+    setIsSaving(true);
+    setSaveMessage({ text: '', type: '' });
+
+    try {
+      // NOTE: Updating actual email usually requires supabase.auth.updateUser.
+      // We will only update full_name in the profiles table here.
+      const { error } = await supabase
+        .from('profiles')
+        .update({ full_name: fullName })
+        .eq('id', profile.id);
+
+      if (error) throw error;
+
+      setSaveMessage({ text: 'Profile updated successfully!', type: 'success' });
+      setTimeout(() => setSaveMessage({ text: '', type: '' }), 3000);
+    } catch (err: any) {
+      console.error(err);
+      setSaveMessage({ text: 'Failed to update profile.', type: 'error' });
+    } finally {
+      setIsSaving(false);
+    }
+  };
 
   const handleLogout = async () => {
     await logout();
@@ -51,11 +93,21 @@ export const Settings: React.FC = () => {
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div className="space-y-1">
                 <label className="text-xs font-bold text-slate-500 uppercase tracking-wider">Full Name</label>
-                <input className="w-full px-4 py-2 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:ring-2 focus:ring-primary/20 outline-none" defaultValue={profile?.full_name || ''} type="text" />
+                <input
+                  className="w-full px-4 py-2 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:ring-2 focus:ring-primary/20 outline-none transition-all"
+                  value={fullName}
+                  onChange={(e) => setFullName(e.target.value)}
+                  type="text"
+                />
               </div>
               <div className="space-y-1">
                 <label className="text-xs font-bold text-slate-500 uppercase tracking-wider">Email Address</label>
-                <input className="w-full px-4 py-2 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:ring-2 focus:ring-primary/20 outline-none" defaultValue={profile?.email || ''} type="email" />
+                <input
+                  className="w-full px-4 py-2 bg-slate-50 border border-slate-200 rounded-xl text-sm opacity-70 cursor-not-allowed"
+                  value={email}
+                  type="email"
+                  readOnly title="Email cannot be changed here"
+                />
               </div>
               <div className="space-y-1">
                 <label className="text-xs font-bold text-slate-500 uppercase tracking-wider">Role</label>
@@ -66,8 +118,21 @@ export const Settings: React.FC = () => {
                 <input className="w-full px-4 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs focus:ring-2 focus:ring-primary/20 outline-none" defaultValue={profile?.id || ''} type="text" readOnly />
               </div>
             </div>
-            <div className="flex justify-end">
-              <button className="px-6 py-2 bg-primary text-white rounded-xl font-bold text-sm shadow-lg shadow-primary/20">Save Changes</button>
+            <div className="flex items-center justify-between mt-6">
+              <div>
+                {saveMessage.text && (
+                  <p className={`text-sm font-bold ${saveMessage.type === 'success' ? 'text-emerald-600' : 'text-rose-600'}`}>
+                    {saveMessage.text}
+                  </p>
+                )}
+              </div>
+              <button
+                onClick={handleSaveProfile}
+                disabled={isSaving}
+                className="px-6 py-2 bg-primary text-white rounded-xl font-bold text-sm shadow-lg shadow-primary/20 hover:opacity-90 disabled:opacity-50 transition-all"
+              >
+                {isSaving ? 'Saving...' : 'Save Changes'}
+              </button>
             </div>
           </div>
         </section>
@@ -88,7 +153,12 @@ export const Settings: React.FC = () => {
                 </div>
               </div>
               <label className="relative inline-flex items-center cursor-pointer">
-                <input className="sr-only peer" type="checkbox" />
+                <input
+                  className="sr-only peer"
+                  type="checkbox"
+                  checked={darkMode}
+                  onChange={(e) => setDarkMode(e.target.checked)}
+                />
                 <div className="w-11 h-6 bg-slate-300 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-primary"></div>
               </label>
             </div>
@@ -104,7 +174,12 @@ export const Settings: React.FC = () => {
                 </div>
               </div>
               <label className="relative inline-flex items-center cursor-pointer">
-                <input defaultChecked className="sr-only peer" type="checkbox" />
+                <input
+                  className="sr-only peer"
+                  type="checkbox"
+                  checked={notifications}
+                  onChange={(e) => setNotifications(e.target.checked)}
+                />
                 <div className="w-11 h-6 bg-slate-300 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-primary"></div>
               </label>
             </div>
@@ -119,10 +194,14 @@ export const Settings: React.FC = () => {
                   <p className="text-xs text-slate-500">Choose your preferred language for the interface.</p>
                 </div>
               </div>
-              <select className="bg-white border border-slate-200 rounded-lg text-xs font-bold px-3 py-1.5 focus:ring-0">
-                <option>English (US)</option>
-                <option>Vietnamese (VN)</option>
-                <option>French (FR)</option>
+              <select
+                className="bg-white border border-slate-200 rounded-lg text-xs font-bold px-3 py-1.5 focus:ring-0"
+                value={language}
+                onChange={(e) => setLanguage(e.target.value)}
+              >
+                <option value="English (US)">English (US)</option>
+                <option value="Vietnamese (VN)">Vietnamese (VN)</option>
+                <option value="French (FR)">French (FR)</option>
               </select>
             </div>
           </div>
