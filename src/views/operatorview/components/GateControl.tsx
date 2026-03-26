@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { 
   Search, 
   Bell, 
@@ -12,18 +12,50 @@ import {
   ChevronRight,
   Mail,
   ExternalLink,
-  Cpu
+  Cpu,
+  Unlock,
+  X
 } from 'lucide-react';
+import GateActionModal from './GateActionModal';
+import ActionFeedback from './ActionFeedback';
+
+interface Gate {
+  id: string;
+  name: string;
+  zone: string;
+  status: 'Online' | 'Alert' | 'Offline';
+  img: string;
+  recTime?: string;
+  alert?: string;
+  lockState: 'open' | 'closed' | 'locked';
+}
+
+interface HistoryEntry {
+  action: string;
+  user: string;
+  time: string;
+  type: 'open' | 'lock' | 'close';
+  reason?: string;
+}
+
+interface Feedback {
+  type: 'success' | 'error' | 'loading';
+  message: string;
+  action: string;
+  gateName: string;
+  timestamp: string;
+}
 
 export default function GateControl() {
-  const gates = [
+  const [gates, setGates] = useState<Gate[]>([
     { 
       id: 'A', 
       name: 'Main Entrance', 
       zone: 'North Campus', 
       status: 'Online', 
       img: 'https://picsum.photos/seed/gateA_live/600/400',
-      recTime: '10:45:22'
+      recTime: '10:45:22',
+      lockState: 'open'
     },
     { 
       id: 'B', 
@@ -31,31 +63,152 @@ export default function GateControl() {
       zone: 'East Tower', 
       status: 'Alert', 
       img: 'https://picsum.photos/seed/gateB_live/600/400',
-      alert: 'Obstruction Detected'
+      alert: 'Obstruction Detected',
+      lockState: 'closed'
     },
     { 
       id: 'C', 
       name: 'Library Exit', 
       zone: 'Central Hub', 
       status: 'Offline', 
-      img: '' 
+      img: '',
+      lockState: 'closed'
     },
     { 
       id: 'D', 
       name: 'Dormitory Entry', 
       zone: 'Residential', 
       status: 'Online', 
-      img: 'https://picsum.photos/seed/gateD_live/600/400'
+      img: 'https://picsum.photos/seed/gateD_live/600/400',
+      lockState: 'open'
     },
-  ];
+  ]);
 
-  const history = [
-    { action: 'Gate A Opened Manually', user: 'By Operator Nguyen Van A', time: '10:42 AM', type: 'open' },
-    { action: 'Gate B Emergency Locked', user: 'Auto-lock: Obstruction Sensor', time: '10:35 AM', type: 'lock' },
+  const [history, setHistory] = useState<HistoryEntry[]>([
+    { action: 'Gate A Opened Manually', user: 'By Operator Nguyen Van A', time: '10:42 AM', type: 'open', reason: 'Vehicle waiting' },
+    { action: 'Gate B Emergency Locked', user: 'Auto-lock: Obstruction Sensor', time: '10:35 AM', type: 'lock', reason: 'Obstruction detected' },
     { action: 'Gate D Closed Manually', user: 'By Admin System', time: '10:15 AM', type: 'close' },
     { action: 'Gate A Opened Manually', user: 'By Operator Nguyen Van A', time: '09:58 AM', type: 'open' },
     { action: 'Gate A Closed Manually', user: 'By Operator Nguyen Van A', time: '09:55 AM', type: 'close' },
-  ];
+  ]);
+
+  // Modal & Feedback State
+  const [showModal, setShowModal] = useState(false);
+  const [showClearConfirm, setShowClearConfirm] = useState(false);
+  const [selectedGate, setSelectedGate] = useState<Gate | null>(null);
+  const [actionType, setActionType] = useState<'open' | 'close' | 'emergency_lock'>('open');
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [feedback, setFeedback] = useState<Feedback | null>(null);
+
+  const handleActionClick = (gate: Gate, type: 'open' | 'close' | 'emergency_lock') => {
+    if (gate.status === 'Offline') {
+      setFeedback({
+        type: 'error',
+        message: 'Gate is offline - cannot perform action',
+        action: type,
+        gateName: gate.name,
+        timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+      });
+      return;
+    }
+    if (gate.status === 'Alert' && type === 'open') {
+      setFeedback({
+        type: 'error',
+        message: 'Gate has an active alert - cannot open. Check obstruction first.',
+        action: type,
+        gateName: gate.name,
+        timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+      });
+      return;
+    }
+
+    setSelectedGate(gate);
+    setActionType(type);
+    setShowModal(true);
+  };
+
+  const handleConfirmAction = async (reason: string) => {
+    if (!selectedGate) return;
+
+    setIsSubmitting(true);
+    setFeedback({
+      type: 'loading',
+      message: 'Processing gate action...',
+      action: actionType,
+      gateName: selectedGate.name,
+      timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+    });
+
+    // Simulate API call
+    setTimeout(() => {
+      // Update gate state
+      setGates(prev =>
+        prev.map(g => {
+          if (g.id === selectedGate.id) {
+            let newLockState = g.lockState;
+            if (actionType === 'open') newLockState = 'open';
+            else if (actionType === 'close') newLockState = 'closed';
+            else if (actionType === 'emergency_lock') newLockState = 'locked';
+            return { ...g, lockState: newLockState };
+          }
+          return g;
+        })
+      );
+
+      // Add to history
+      const actionLabels = {
+        open: 'Opened',
+        close: 'Closed',
+        emergency_lock: 'Emergency Locked'
+      };
+
+      const newHistoryEntry: HistoryEntry = {
+        action: `Gate ${selectedGate.id} ${actionLabels[actionType]} Manually`,
+        user: 'By Operator (You)',
+        time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+        type: actionType === 'open' ? 'open' : actionType === 'emergency_lock' ? 'lock' : 'close',
+        reason
+      };
+
+      setHistory([newHistoryEntry, ...history]);
+
+      // Show success feedback
+      setFeedback({
+        type: 'success',
+        message: `Gate has been successfully ${actionLabels[actionType].toLowerCase()}. Reason: ${reason}`,
+        action: actionType,
+        gateName: selectedGate.name,
+        timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+      });
+
+      setIsSubmitting(false);
+      setShowModal(false);
+      setSelectedGate(null);
+    }, 1500);
+  };
+
+  const handleClearHistory = () => {
+    setHistory([]);
+    setShowClearConfirm(false);
+    setFeedback({
+      type: 'success',
+      message: 'Manual override history has been cleared',
+      action: 'clear',
+      gateName: 'System',
+      timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+    });
+  };
+
+  const getLockIcon = (state: 'open' | 'closed' | 'locked') => {
+    switch (state) {
+      case 'open':
+        return { icon: Unlock, color: 'text-emerald-600', bg: 'bg-emerald-100', label: 'OPEN' };
+      case 'closed':
+        return { icon: DoorClosed, color: 'text-slate-600', bg: 'bg-slate-100', label: 'CLOSED' };
+      case 'locked':
+        return { icon: Lock, color: 'text-red-600', bg: 'bg-red-100', label: 'LOCKED' };
+    }
+  };
 
   return (
     <div className="space-y-8">
@@ -75,95 +228,122 @@ export default function GateControl() {
         </div>
       </header>
 
+      {/* Action Feedback */}
+      {feedback && (
+        <div className="fixed bottom-6 right-6 max-w-md z-40">
+          <ActionFeedback
+            {...feedback}
+            onDismiss={() => setFeedback(null)}
+          />
+        </div>
+      )}
+
       <div className="grid grid-cols-1 lg:grid-cols-4 gap-8">
         {/* Gate Panels Grid */}
         <div className="lg:col-span-3 grid grid-cols-1 md:grid-cols-2 gap-6">
-          {gates.map((gate) => (
-            <div 
-              key={gate.id} 
-              className={`bg-white rounded-2xl overflow-hidden shadow-sm border transition-all ${
-                gate.status === 'Alert' ? 'border-2 border-amber-400' : 'border-slate-200'
-              } ${gate.status === 'Offline' ? 'opacity-60 grayscale-[0.5]' : ''}`}
-            >
-              <div className="p-4 flex items-center justify-between border-b border-slate-100">
-                <div>
-                  <h4 className="font-bold text-sm">{gate.name} - Gate {gate.id}</h4>
-                  <p className="text-[10px] text-slate-400 font-medium uppercase tracking-wider">Zone: {gate.zone}</p>
-                </div>
-                <div className={`flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-bold ${
-                  gate.status === 'Online' ? 'bg-emerald-100 text-emerald-700' :
-                  gate.status === 'Alert' ? 'bg-amber-100 text-amber-700' :
-                  'bg-slate-100 text-slate-700'
-                }`}>
-                  {gate.status === 'Online' && <div className="size-2 rounded-full bg-emerald-500"></div>}
-                  {gate.status === 'Alert' && <AlertCircle size={12} />}
-                  {gate.status}
-                </div>
-              </div>
+          {gates.map((gate) => {
+            const lockIcon = getLockIcon(gate.lockState);
+            const LockIcon = lockIcon.icon;
 
-              <div className="relative aspect-video bg-slate-900 flex items-center justify-center">
-                {gate.status === 'Offline' ? (
-                  <div className="text-center">
-                    <Signal className="text-slate-400 mx-auto mb-2" size={48} />
-                    <p className="text-[10px] font-bold text-slate-400 uppercase">Connection Lost</p>
+            return (
+              <div 
+                key={gate.id} 
+                className={`bg-white rounded-2xl overflow-hidden shadow-sm border transition-all ${
+                  gate.status === 'Alert' ? 'border-2 border-amber-400' : 'border-slate-200'
+                } ${gate.status === 'Offline' ? 'opacity-60 grayscale-[0.5]' : ''}`}
+              >
+                <div className="p-4 flex items-center justify-between border-b border-slate-100">
+                  <div>
+                    <h4 className="font-bold text-sm">{gate.name} - Gate {gate.id}</h4>
+                    <p className="text-[10px] text-slate-400 font-medium uppercase tracking-wider">Zone: {gate.zone}</p>
                   </div>
-                ) : (
-                  <>
-                    <img 
-                      src={gate.img} 
-                      alt={gate.name} 
-                      className={`w-full h-full object-cover opacity-80 ${gate.status === 'Alert' ? 'brightness-50' : ''}`}
-                      referrerPolicy="no-referrer"
-                    />
-                    <div className="absolute inset-0 bg-black/20 flex items-center justify-center">
-                      <Video className="text-white/50" size={40} />
+                  <div className="flex flex-col items-end gap-2">
+                    {/* Gate Connection Status */}
+                    <div className={`flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-bold ${
+                      gate.status === 'Online' ? 'bg-emerald-100 text-emerald-700' :
+                      gate.status === 'Alert' ? 'bg-amber-100 text-amber-700' :
+                      'bg-slate-100 text-slate-700'
+                    }`}>
+                      {gate.status === 'Online' && <div className="size-2 rounded-full bg-emerald-500"></div>}
+                      {gate.status === 'Alert' && <AlertCircle size={12} />}
+                      {gate.status}
                     </div>
-                    {gate.recTime && (
-                      <div className="absolute top-2 left-2 px-2 py-0.5 bg-black/60 rounded text-[10px] text-white font-mono">REC {gate.recTime}</div>
-                    )}
-                    {gate.alert && (
-                      <div className="absolute inset-0 flex items-center justify-center border-4 border-amber-400">
-                        <div className="bg-amber-400 text-white px-3 py-1 rounded-full text-[10px] font-bold animate-pulse uppercase tracking-widest">
-                          {gate.alert}
-                        </div>
-                      </div>
-                    )}
-                  </>
-                )}
-              </div>
+                    
+                    {/* Gate Lock State */}
+                    <div className={`flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-bold ${lockIcon.bg} ${lockIcon.color}`}>
+                      <LockIcon size={14} />
+                      {lockIcon.label}
+                    </div>
+                  </div>
+                </div>
 
-              <div className="p-6">
-                <div className="grid grid-cols-2 gap-3">
-                  <button 
-                    disabled={gate.status === 'Offline' || gate.status === 'Alert'}
-                    className={`flex items-center justify-center gap-2 py-3 bg-primary text-white rounded-xl font-bold text-sm transition-all ${
-                      (gate.status === 'Offline' || gate.status === 'Alert') ? 'opacity-50 cursor-not-allowed' : 'hover:bg-primary/90'
-                    }`}
-                  >
-                    <DoorOpen size={18} /> Open
-                  </button>
-                  <button 
-                    disabled={gate.status === 'Offline'}
-                    className={`flex items-center justify-center gap-2 py-3 bg-slate-100 text-slate-700 rounded-xl font-bold text-sm transition-all ${
-                      gate.status === 'Offline' ? 'opacity-50 cursor-not-allowed' : 'hover:bg-slate-200'
-                    }`}
-                  >
-                    <DoorClosed size={18} /> Close
-                  </button>
-                  <button 
-                    disabled={gate.status === 'Offline'}
-                    className={`col-span-2 flex items-center justify-center gap-2 py-3 rounded-xl font-bold text-sm transition-all ${
-                      gate.status === 'Alert' 
-                        ? 'bg-red-600 text-white hover:bg-red-700' 
-                        : 'bg-red-50 text-red-600 hover:bg-red-100'
-                    } ${gate.status === 'Offline' ? 'opacity-50 cursor-not-allowed' : ''}`}
-                  >
-                    <Lock size={18} /> Emergency Lock
-                  </button>
+                <div className="relative aspect-video bg-slate-900 flex items-center justify-center">
+                  {gate.status === 'Offline' ? (
+                    <div className="text-center">
+                      <Signal className="text-slate-400 mx-auto mb-2" size={48} />
+                      <p className="text-[10px] font-bold text-slate-400 uppercase">Connection Lost</p>
+                    </div>
+                  ) : (
+                    <>
+                      <img 
+                        src={gate.img} 
+                        alt={gate.name} 
+                        className={`w-full h-full object-cover opacity-80 ${gate.status === 'Alert' ? 'brightness-50' : ''}`}
+                        referrerPolicy="no-referrer"
+                      />
+                      <div className="absolute inset-0 bg-black/20 flex items-center justify-center">
+                        <Video className="text-white/50" size={40} />
+                      </div>
+                      {gate.recTime && (
+                        <div className="absolute top-2 left-2 px-2 py-0.5 bg-black/60 rounded text-[10px] text-white font-mono">REC {gate.recTime}</div>
+                      )}
+                      {gate.alert && (
+                        <div className="absolute inset-0 flex items-center justify-center border-4 border-amber-400">
+                          <div className="bg-amber-400 text-white px-3 py-1 rounded-full text-[10px] font-bold animate-pulse uppercase tracking-widest">
+                            {gate.alert}
+                          </div>
+                        </div>
+                      )}
+                    </>
+                  )}
+                </div>
+
+                <div className="p-6">
+                  <div className="grid grid-cols-2 gap-3">
+                    <button 
+                      onClick={() => handleActionClick(gate, 'open')}
+                      disabled={gate.status === 'Offline' || gate.status === 'Alert' || isSubmitting}
+                      className={`flex items-center justify-center gap-2 py-3 bg-primary text-white rounded-xl font-bold text-sm transition-all ${
+                        (gate.status === 'Offline' || gate.status === 'Alert' || isSubmitting) ? 'opacity-50 cursor-not-allowed' : 'hover:bg-primary/90'
+                      }`}
+                    >
+                      <DoorOpen size={18} /> Open
+                    </button>
+                    <button 
+                      onClick={() => handleActionClick(gate, 'close')}
+                      disabled={gate.status === 'Offline' || isSubmitting}
+                      className={`flex items-center justify-center gap-2 py-3 bg-slate-100 text-slate-700 rounded-xl font-bold text-sm transition-all ${
+                        (gate.status === 'Offline' || isSubmitting) ? 'opacity-50 cursor-not-allowed' : 'hover:bg-slate-200'
+                      }`}
+                    >
+                      <DoorClosed size={18} /> Close
+                    </button>
+                    <button 
+                      onClick={() => handleActionClick(gate, 'emergency_lock')}
+                      disabled={gate.status === 'Offline' || isSubmitting}
+                      className={`col-span-2 flex items-center justify-center gap-2 py-3 rounded-xl font-bold text-sm transition-all ${
+                        gate.status === 'Alert' 
+                          ? 'bg-red-600 text-white hover:bg-red-700' 
+                          : 'bg-red-50 text-red-600 hover:bg-red-100'
+                      } ${(gate.status === 'Offline' || isSubmitting) ? 'opacity-50 cursor-not-allowed' : ''}`}
+                    >
+                      <Lock size={18} /> Emergency Lock
+                    </button>
+                  </div>
                 </div>
               </div>
-            </div>
-          ))}
+            );
+          })}
         </div>
 
         {/* History Sidebar Section */}
@@ -173,7 +353,13 @@ export default function GateControl() {
               <h4 className="font-bold text-sm flex items-center gap-2">
                 <History size={16} className="text-primary" /> Manual Override History
               </h4>
-              <button className="text-[10px] font-bold text-primary hover:underline">Clear</button>
+              <button 
+                onClick={() => setShowClearConfirm(true)}
+                disabled={history.length === 0}
+                className="text-[10px] font-bold text-primary hover:underline disabled:text-slate-400 disabled:cursor-not-allowed transition-colors"
+              >
+                Clear
+              </button>
             </div>
             <div className="p-4 flex-1 space-y-5 overflow-y-auto max-h-[600px]">
               {history.map((item, i) => (
@@ -187,9 +373,12 @@ export default function GateControl() {
                      item.type === 'lock' ? <Lock size={14} /> : 
                      <DoorClosed size={14} />}
                   </div>
-                  <div>
-                    <p className="text-xs font-bold leading-tight group-hover:text-primary transition-colors">{item.action}</p>
-                    <p className="text-[10px] text-slate-500">{item.user}</p>
+                  <div className="min-w-0">
+                    <p className="text-xs font-bold leading-tight group-hover:text-primary transition-colors truncate">{item.action}</p>
+                    <p className="text-[10px] text-slate-500 truncate">{item.user}</p>
+                    {item.reason && (
+                      <p className="text-[10px] text-slate-400 italic truncate">Reason: {item.reason}</p>
+                    )}
                     <span className="text-[10px] font-mono text-slate-400 block mt-1">{item.time}</span>
                   </div>
                 </div>
@@ -209,20 +398,93 @@ export default function GateControl() {
             <div className="space-y-3">
               <div className="flex justify-between items-center text-xs">
                 <span className="opacity-80">Total Gates Active</span>
-                <span className="font-bold">12</span>
+                <span className="font-bold">{gates.filter(g => g.status !== 'Offline').length}/{gates.length}</span>
               </div>
               <div className="flex justify-between items-center text-xs">
                 <span className="opacity-80">Alerts Pending</span>
-                <span className="font-bold bg-white text-primary px-2 py-0.5 rounded-full">01</span>
+                <span className="font-bold bg-white text-primary px-2 py-0.5 rounded-full">
+                  {gates.filter(g => g.status === 'Alert').length > 0 ? gates.filter(g => g.status === 'Alert').length.toString().padStart(2, '0') : '00'}
+                </span>
               </div>
               <div className="flex justify-between items-center text-xs">
                 <span className="opacity-80">Manual Actions (Today)</span>
-                <span className="font-bold">48</span>
+                <span className="font-bold">{history.length}</span>
               </div>
             </div>
           </div>
         </div>
       </div>
+
+      {/* Gate Action Modal */}
+      {selectedGate && (
+        <GateActionModal
+          isOpen={showModal}
+          onClose={() => {
+            setShowModal(false);
+            setSelectedGate(null);
+          }}
+          gateName={selectedGate.name}
+          gateId={selectedGate.id}
+          actionType={actionType}
+          onConfirm={handleConfirmAction}
+          isSubmitting={isSubmitting}
+        />
+      )}
+
+      {/* Clear History Confirmation Modal */}
+      {showClearConfirm && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-2xl shadow-2xl max-w-sm w-full overflow-hidden animate-in fade-in zoom-in-95">
+            {/* Header */}
+            <div className="px-6 py-4 bg-gradient-to-r from-amber-500 to-amber-600 text-white flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <AlertCircle size={24} />
+                <h2 className="text-xl font-bold">Clear History</h2>
+              </div>
+              <button
+                onClick={() => setShowClearConfirm(false)}
+                className="p-1 hover:bg-amber-700 rounded-lg transition-colors"
+              >
+                <X size={20} />
+              </button>
+            </div>
+
+            {/* Content */}
+            <div className="p-6 space-y-6">
+              <div className="flex gap-3 p-3 bg-amber-50 border border-amber-200 rounded-lg">
+                <AlertCircle className="text-amber-600 flex-shrink-0 mt-0.5" size={20} />
+                <div>
+                  <p className="font-semibold text-sm text-amber-900">Permanent Action</p>
+                  <p className="text-xs text-amber-700 mt-1">
+                    This will permanently delete all {history.length} manual override record(s) from the history. This action cannot be undone.
+                  </p>
+                </div>
+              </div>
+
+              <div className="bg-slate-50 p-4 rounded-lg border border-slate-200">
+                <p className="text-xs text-slate-600 font-mono">
+                  Records to delete: <span className="font-bold text-slate-800">{history.length}</span>
+                </p>
+              </div>
+
+              <div className="flex gap-3 pt-2 border-t border-slate-200">
+                <button
+                  onClick={() => setShowClearConfirm(false)}
+                  className="flex-1 px-4 py-2.5 border border-slate-300 rounded-lg font-semibold text-slate-700 hover:bg-slate-50 transition-colors"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={handleClearHistory}
+                  className="flex-1 px-4 py-2.5 bg-red-500 text-white rounded-lg font-semibold hover:bg-red-600 transition-colors"
+                >
+                  Clear All Records
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
