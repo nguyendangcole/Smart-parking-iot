@@ -38,7 +38,7 @@ BEGIN
     ) ON COMMIT DROP;
 
     INSERT INTO temp_users_fix VALUES 
-    ('admin@hcmut.edu.vn', 'Hệ Thống Admin', 'admin'),
+    ('admin@hcmut.edu.vn', 'System Admin', 'admin'),
     ('operator@hcmut.edu.vn', 'Nhân Viên Vận Hành', 'operator'),
     ('sinhvien@hcmut.edu.vn', 'Nguyễn Văn A (Sinh Viên)', 'student'),
     ('giangvien@hcmut.edu.vn', 'Lê Thị B (Giảng Viên)', 'faculty'),

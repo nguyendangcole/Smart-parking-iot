@@ -19,35 +19,19 @@ export const Settings: React.FC = () => {
       </div>
 
       <div className="space-y-8">
-        {/* Profile Information */}
         <section className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
-          {/* ... existing profile section ... */}
           <div className="p-6 border-b border-slate-100">
             <h3 className="font-bold text-lg">Profile Information</h3>
           </div>
           <div className="p-6 space-y-6">
             <div className="flex items-center gap-6">
-              <div className="relative group">
-                <div className="w-24 h-24 rounded-2xl bg-primary/10 flex items-center justify-center text-primary overflow-hidden border-2 border-primary/20">
-                  {profile?.full_name ? (
-                    <span className="text-3xl font-black">
-                      {profile.full_name.split(' ').map(n => n[0]).join('').toUpperCase()}
-                    </span>
-                  ) : (
-                    <span className="material-symbols-outlined text-4xl">person</span>
-                  )}
-                </div>
-                <button className="absolute -bottom-2 -right-2 w-8 h-8 bg-white border border-slate-200 rounded-full flex items-center justify-center text-slate-600 shadow-sm hover:text-primary transition-colors">
-                  <span className="material-symbols-outlined text-sm">edit</span>
-                </button>
+              <div className="w-24 h-24 bg-primary/10 rounded-2xl flex items-center justify-center text-primary text-3xl font-bold">
+                {profile?.full_name?.[0] || 'A'}
               </div>
               <div>
-                <h4 className="font-bold text-lg">{profile?.full_name || 'Administrator'}</h4>
-                <p className="text-sm text-slate-500 uppercase tracking-tighter font-semibold">{profile?.role || 'Admin'} • ID: #{profile?.id?.slice(0, 8) || '00000'}</p>
-                <p className="text-xs text-slate-400 mt-1">{profile?.email || 'N/A'}</p>
+                <button className="px-4 py-2 bg-primary/10 text-primary rounded-xl font-bold text-sm hover:bg-primary/20 transition-all">Change Avatar</button>
               </div>
             </div>
-
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div className="space-y-1">
                 <label className="text-xs font-bold text-slate-500 uppercase tracking-wider">Full Name</label>
@@ -55,15 +39,15 @@ export const Settings: React.FC = () => {
               </div>
               <div className="space-y-1">
                 <label className="text-xs font-bold text-slate-500 uppercase tracking-wider">Email Address</label>
-                <input className="w-full px-4 py-2 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:ring-2 focus:ring-primary/20 outline-none" defaultValue={profile?.email || ''} type="email" />
+                <input className="w-full px-4 py-2 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:ring-2 focus:ring-primary/20 outline-none" defaultValue={profile?.email || ''} type="email" readOnly />
               </div>
               <div className="space-y-1">
                 <label className="text-xs font-bold text-slate-500 uppercase tracking-wider">Role</label>
-                <input className="w-full px-4 py-2 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:ring-2 focus:ring-primary/20 outline-none" defaultValue={profile?.role || ''} type="text" readOnly />
+                <input className="w-full px-4 py-2 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:ring-2 focus:ring-primary/20 outline-none text-slate-400" defaultValue={profile?.role || ''} type="text" readOnly />
               </div>
               <div className="space-y-1">
                 <label className="text-xs font-bold text-slate-500 uppercase tracking-wider">Account ID</label>
-                <input className="w-full px-4 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs focus:ring-2 focus:ring-primary/20 outline-none" defaultValue={profile?.id || ''} type="text" readOnly />
+                <input className="w-full px-4 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs focus:ring-2 focus:ring-primary/20 outline-none text-slate-400" defaultValue={profile?.id || ''} type="text" readOnly />
               </div>
             </div>
             <div className="flex justify-end">
@@ -125,39 +109,6 @@ export const Settings: React.FC = () => {
                 <option>French (FR)</option>
               </select>
             </div>
-          </div>
-        </section>
-
-        <section className="bg-rose-50 rounded-2xl border border-rose-100 shadow-sm overflow-hidden">
-          <div className="p-6 border-b border-rose-100">
-            <h3 className="font-bold text-lg text-rose-900">Security & Privacy</h3>
-          </div>
-          <div className="p-6 space-y-4">
-            <button className="w-full flex items-center justify-between p-4 rounded-xl bg-white border border-rose-100 hover:border-rose-300 transition-all text-left">
-              <div className="flex items-center gap-4">
-                <div className="w-10 h-10 bg-rose-100 rounded-lg flex items-center justify-center text-rose-600">
-                  <span className="material-symbols-outlined">lock</span>
-                </div>
-                <div>
-                  <p className="text-sm font-bold">Change Password</p>
-                  <p className="text-xs text-slate-500">Update your account security credentials.</p>
-                </div>
-              </div>
-              <span className="material-symbols-outlined text-slate-400">chevron_right</span>
-            </button>
-
-            <button className="w-full flex items-center justify-between p-4 rounded-xl bg-white border border-rose-100 hover:border-rose-300 transition-all text-left">
-              <div className="flex items-center gap-4">
-                <div className="w-10 h-10 bg-rose-100 rounded-lg flex items-center justify-center text-rose-600">
-                  <span className="material-symbols-outlined">security</span>
-                </div>
-                <div>
-                  <p className="text-sm font-bold">Two-Factor Authentication</p>
-                  <p className="text-xs text-slate-500">Add an extra layer of security to your account.</p>
-                </div>
-              </div>
-              <span className="text-xs font-bold text-emerald-600 bg-emerald-50 px-2 py-1 rounded-full">ENABLED</span>
-            </button>
           </div>
         </section>
 

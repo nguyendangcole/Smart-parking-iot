@@ -5,7 +5,7 @@
   --font-sans: "Plus Jakarta Sans", ui-sans-serif, system-ui, sans-serif;
   --font-display: "Plus Jakarta Sans", sans-serif;
   --font-public: "Public Sans", sans-serif;
-  
+
   --color-primary: #0054a3;
   --color-primary-dark: #003a70;
   --color-accent-orange: #ec5b13;
@@ -29,11 +29,11 @@
   .glass {
     @apply bg-white/70 backdrop-blur-xl border border-white/30;
   }
-  
+
   .sidebar-link {
     @apply flex items-center gap-3 px-4 py-3 text-slate-500 hover:bg-slate-100 hover:text-primary transition-all rounded-xl font-semibold text-sm;
   }
-  
+
   .sidebar-link-active {
     @apply flex items-center gap-3 px-4 py-3 bg-primary text-white rounded-xl shadow-md shadow-primary/20 font-semibold text-sm;
   }
@@ -54,6 +54,27 @@
 }
 
 @keyframes marquee {
-  0% { transform: translateX(100%); }
-  100% { transform: translateX(-100%); }
+  0% {
+    transform: translateX(100%);
+  }
+
+  100% {
+    transform: translateX(-100%);
+  }
+}
+
+@layer utilities {
+  .animate-marquee-fast {
+    animation: marquee-fast 10s linear infinite;
+  }
+}
+
+@keyframes marquee-fast {
+  0% {
+    transform: translateX(0%);
+  }
+
+  100% {
+    transform: translateX(-50%);
+  }
 }

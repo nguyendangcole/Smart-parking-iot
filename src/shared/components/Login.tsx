@@ -13,11 +13,11 @@ import {
   EyeOff
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
-import { supabase } from '../../../shared/supabase';
+import { supabase } from '../supabase';
 import { User } from '@supabase/supabase-js';
 
 interface LoginProps {
-  onLogin: (user: User) => void;
+  onLogin: () => void;
   onVisitor: () => void;
 }
 
@@ -48,10 +48,14 @@ export default function Login({ onLogin, onVisitor }: LoginProps) {
       if (authError) throw authError;
 
       if (data.user) {
-        onLogin(data.user);
+        onLogin();
       }
     } catch (err: any) {
-      console.error('Login error:', err);
+      console.error('🛠 [Login Debug] Error full:', err);
+      console.error('🛠 [Login Debug] Message:', err?.message);
+      console.error('🛠 [Login Debug] Status:', err?.status);
+      console.error('🛠 [Login Debug] Code:', err?.code);
+
       if (err.message === 'Invalid login credentials') {
         setError('Incorrect Email or Password.');
       } else {
