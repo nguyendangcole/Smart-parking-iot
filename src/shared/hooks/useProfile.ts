@@ -6,6 +6,7 @@ export interface Profile {
     email: string;
     full_name: string | null;
     role: string;
+    balance?: number;
 }
 
 export function useProfile() {
@@ -88,5 +89,23 @@ export function useProfile() {
         window.location.href = '/';
     };
 
-    return { profile, loading, logout, fetchError };
+    const refreshProfile = async () => {
+        const { data: { session } } = await supabase.auth.getSession();
+        if (session?.user) {
+            try {
+                const { data, error } = await supabase
+                    .from('profiles')
+                    .select('*')
+                    .eq('id', session.user.id)
+                    .single();
+                if (!error && data) {
+                    setProfile(data);
+                }
+            } catch (err) {
+                console.error('Failed to refresh profile', err);
+            }
+        }
+    };
+
+    return { profile, loading, logout, fetchError, refreshProfile };
 }

@@ -97,7 +97,7 @@ export default function MemberApp() {
       <Sidebar currentScreen={currentScreen} onNavigate={setCurrentScreen} />
 
       <main className="ml-72 flex-1 p-8 min-h-screen overflow-y-auto">
-        {currentScreen === 'dashboard' && <Dashboard />}
+        {currentScreen === 'dashboard' && <Dashboard onNavigate={setCurrentScreen} />}
         {currentScreen === 'history' && <History />}
         {currentScreen === 'payments' && <Payments />}
         {currentScreen === 'support' && <Support />}
