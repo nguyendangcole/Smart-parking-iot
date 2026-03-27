@@ -46,7 +46,7 @@ export default function Sidebar({ currentScreen, onNavigate }: SidebarProps) {
           {navItems.map((item) => (
             <button
               key={item.id}
-              onClick={() => item.id !== 'support' && onNavigate(item.id as Screen)}
+              onClick={() => onNavigate(item.id as Screen)}
               className={currentScreen === item.id ? "sidebar-link-active w-full text-left" : "sidebar-link w-full text-left"}
             >
               <item.icon size={20} />

@@ -48,7 +48,7 @@ const capitalize = (s: string) => s.charAt(0).toUpperCase() + s.slice(1);
 export const Pricing: React.FC = () => {
   const [plans, setPlans] = useState<Plan[]>([]);
   const [isModalOpen, setIsModalOpen] = useState(false);
-  const [modalMode, setModalMode] = useState<'create' | 'clone'>('create');
+  const [modalMode, setModalMode] = useState<'create' | 'clone' | 'edit'>('create');
   const [showHistory, setShowHistory] = useState(false);
   const [errorText, setErrorText] = useState('');
   const [isLoading, setIsLoading] = useState(true);
@@ -170,6 +170,36 @@ export const Pricing: React.FC = () => {
     resetForm();
   };
 
+  const handleUpdatePlan = async () => {
+    if (!newPlan.id) return;
+    if (!newPlan.name || newPlan.price === undefined || newPlan.price < 0) {
+      setErrorText('Name is required and price must be >= 0.');
+      return;
+    }
+
+    const dbPayload = {
+      name: newPlan.name,
+      role: mapRoleToDB(newPlan.role as Role),
+      type: mapTypeToDB(newPlan.type as PlanType),
+      price: newPlan.price,
+      is_exemption: newPlan.isExemption,
+      status: (newPlan.status || 'Draft').toLowerCase(),
+      effective_from: new Date(newPlan.effectiveFrom!).toISOString(),
+      effective_to: newPlan.effectiveTo ? new Date(newPlan.effectiveTo).toISOString() : null,
+      version: newPlan.version,
+    };
+
+    const { error } = await supabase.from('pricing_policies').update(dbPayload).eq('id', newPlan.id);
+    if (error) {
+      setErrorText(error.message);
+      return;
+    }
+
+    fetchPolicies();
+    setIsModalOpen(false);
+    resetForm();
+  };
+
   const resetForm = () => {
     setErrorText('');
     setModalMode('create');
@@ -218,6 +248,14 @@ export const Pricing: React.FC = () => {
     setIsModalOpen(true);
   };
 
+  const editPlan = (plan: Plan) => {
+    setNewPlan({
+      ...plan,
+    });
+    setModalMode('edit' as any); // Use a temporary type extension or update type
+    setIsModalOpen(true);
+  };
+
   const displayedPlans = showHistory ? plans : plans.filter(p => p.status !== 'Inactive');
 
   return (
@@ -263,7 +301,7 @@ export const Pricing: React.FC = () => {
             <span className="text-slate-500 font-medium text-sm">Avg. Revenue / User</span>
             <span className="material-symbols-outlined text-primary bg-primary/10 p-2 rounded-lg">payments</span>
           </div>
-          <h3 className="text-2xl font-bold">${avgRevenue.toFixed(2)}</h3>
+          <h3 className="text-2xl font-bold">{avgRevenue.toLocaleString()} VND</h3>
           <div className="flex items-center gap-2 mt-2">
             <span className="text-slate-500 text-sm font-bold flex items-center">per monthly sub</span>
           </div>
@@ -341,7 +379,7 @@ export const Pricing: React.FC = () => {
                       }`}>{plan.role}</span>
                   </td>
                   <td className="px-6 py-4">
-                    <div className="font-medium">${plan.price.toFixed(2)}</div>
+                    <div className="font-bold text-slate-800">{plan.price.toLocaleString()} VND</div>
                     <div className="text-xs text-slate-500 capitalize">{plan.type}</div>
                   </td>
                   <td className="px-6 py-4 text-sm text-slate-600">
@@ -359,6 +397,9 @@ export const Pricing: React.FC = () => {
                   <td className="px-6 py-4 text-right whitespace-nowrap">
                     <button onClick={() => toggleStatus(plan)} title={plan.status === 'Active' ? 'Deactivate' : 'Activate'} className="p-2 text-slate-400 hover:text-green-600 transition-colors">
                       <span className="material-symbols-outlined text-xl">{plan.status === 'Active' ? 'block' : 'check_circle'}</span>
+                    </button>
+                    <button onClick={() => editPlan(plan)} title="Edit Policy" className="p-2 text-slate-400 hover:text-amber-500 transition-colors">
+                      <span className="material-symbols-outlined text-xl">edit_note</span>
                     </button>
                     <button onClick={() => clonePlan(plan)} title="Clone Policy" className="p-2 text-slate-400 hover:text-primary transition-colors">
                       <span className="material-symbols-outlined text-xl">content_copy</span>
@@ -404,7 +445,9 @@ export const Pricing: React.FC = () => {
             >
               <div className="sticky top-0 bg-white z-10 p-6 border-b border-slate-100 flex items-center justify-between">
                 <div>
-                  <h3 className="text-2xl font-black tracking-tight">{modalMode === 'clone' ? 'Clone & Update Policy' : 'Create New Policy'}</h3>
+                  <h3 className="text-2xl font-black tracking-tight">
+                    {modalMode === 'clone' ? 'Clone & Update Policy' : modalMode === 'edit' ? 'Edit Policy Settings' : 'Create New Policy'}
+                  </h3>
                   <p className="text-slate-500 mt-1 text-sm">Define pricing rules and validation conditions.</p>
                 </div>
                 <button
@@ -467,15 +510,27 @@ export const Pricing: React.FC = () => {
                         </select>
                       </div>
                       <div className="space-y-1.5">
-                        <label className="text-xs font-bold text-slate-500 uppercase tracking-wider">Price ($)</label>
+                        <label className="text-xs font-bold text-slate-500 uppercase tracking-wider">Price (VND)</label>
                         <input
                           type="number"
                           min="0"
-                          step="0.01"
+                          step="1000"
                           value={newPlan.price}
                           onChange={(e) => setNewPlan({ ...newPlan, price: parseFloat(e.target.value) || 0 })}
                           className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none transition-all"
                         />
+                        <div className="flex flex-wrap gap-1.5 pt-1">
+                          {[5000, 10000, 15000, 150000, 200000, 300000].map((val) => (
+                            <button
+                              key={val}
+                              type="button"
+                              onClick={() => setNewPlan({ ...newPlan, price: val })}
+                              className="px-2 py-1 text-[10px] font-bold bg-white border border-slate-200 rounded-lg hover:border-primary hover:text-primary transition-all shadow-sm"
+                            >
+                              {val.toLocaleString()}
+                            </button>
+                          ))}
+                        </div>
                       </div>
                     </div>
                   </div>
@@ -544,11 +599,13 @@ export const Pricing: React.FC = () => {
                   Cancel
                 </button>
                 <button
-                  onClick={handleCreatePlan}
+                  onClick={modalMode === 'edit' ? handleUpdatePlan : handleCreatePlan}
                   className="flex-1 py-3 bg-primary text-white rounded-xl font-bold shadow-lg shadow-primary/20 hover:brightness-110 transition-all flex items-center justify-center gap-2"
                 >
-                  <span className="material-symbols-outlined">{modalMode === 'clone' ? 'save_as' : 'add'}</span>
-                  {modalMode === 'clone' ? 'Save Cloned Policy' : 'Create Policy'}
+                  <span className="material-symbols-outlined">
+                    {modalMode === 'clone' ? 'save_as' : modalMode === 'edit' ? 'save' : 'add'}
+                  </span>
+                  {modalMode === 'clone' ? 'Save Cloned Policy' : modalMode === 'edit' ? 'Save Changes' : 'Create Policy'}
                 </button>
               </div>
             </motion.div>

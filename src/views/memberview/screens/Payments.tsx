@@ -20,13 +20,12 @@ export default function Payments() {
   const [policies, setPolicies] = React.useState<any[]>([]);
   const [isLoading, setIsLoading] = React.useState(false);
 
-  const [vehicles, setVehicles] = React.useState([
-    { id: 1, type: 'bike', name: 'Honda Winner X', plate: '59-X3 123.45', isPrimary: true },
-    { id: 2, type: 'car', name: 'Toyota Vios', plate: '51-A 999.99', isPrimary: false }
-  ]);
+  const [vehicles, setVehicles] = React.useState<any[]>([]);
+  const [activityHistory, setActivityHistory] = React.useState<any[]>([]);
+
   const [showAddForm, setShowAddForm] = React.useState(false);
   const [newVehicle, setNewVehicle] = React.useState({ type: 'bike', name: '', plate: '', isPrimary: false });
-  const [editingId, setEditingId] = React.useState<number | null>(null);
+  const [editingId, setEditingId] = React.useState<string | null>(null);
 
   const [showNotifications, setShowNotifications] = React.useState(false);
   const [notifications] = React.useState([
@@ -37,31 +36,90 @@ export default function Payments() {
   const unreadCount = notifications.filter(n => n.unread).length;
 
   const [showAllHistory, setShowAllHistory] = React.useState(false);
-  const [activityHistory, setActivityHistory] = React.useState([
-    { type: 'Entry', loc: 'Central Lot A', time: 'Today, 07:30 AM', status: 'Parked', icon: LogIn, color: 'blue' },
-    { type: 'Exit', loc: 'Central Lot A', time: 'Yesterday, 05:45 PM', status: 'Closed', icon: LogOut, color: 'slate' },
-    { type: 'Plan Renewal', loc: '30 Days', time: 'Aug 30, 10:20 AM', status: '- ₫ 150.000', icon: CreditCard, color: 'green' },
-  ]);
+
+  // Fetch Vehicles & Activity
+  const fetchData = React.useCallback(async () => {
+    if (!profile?.id) return;
+
+    // 1. Fetch Vehicles
+    const { data: vehData } = await supabase
+      .from('vehicles')
+      .select('*')
+      .eq('user_id', profile.id)
+      .order('is_primary', { ascending: false });
+
+    if (vehData) {
+      setVehicles(vehData.map(v => ({
+        id: v.id,
+        type: v.vehicle_type === 'car' ? 'car' : 'bike',
+        name: v.model_name,
+        plate: v.plate_number,
+        isPrimary: v.is_primary
+      })));
+    }
+
+    // 2. Fetch Recent Activity (Top 5)
+    const { data: sessData } = await supabase
+      .from('parking_sessions')
+      .select('*')
+      .eq('user_id', profile.id)
+      .order('entry_time', { ascending: false })
+      .limit(5);
+
+    if (sessData) {
+      setActivityHistory(sessData.map(s => ({
+        type: s.exit_time ? 'Exit' : 'Entry',
+        loc: s.zone_name || 'Central Lot A',
+        time: new Date(s.exit_time || s.entry_time).toLocaleString('en-GB', {
+          day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit'
+        }),
+        status: s.exit_time ? 'Closed' : 'Parked',
+        icon: s.exit_time ? LogOut : LogIn,
+        color: s.exit_time ? 'slate' : 'blue'
+      })));
+    }
+  }, [profile?.id]);
+
+  React.useEffect(() => {
+    fetchData();
+  }, [fetchData]);
 
   // Fetch Policies from Database based on user Role
   React.useEffect(() => {
     const fetchPolicies = async () => {
       if (!profile?.role) return;
 
-      // Map profiles.role to pricing_role enum
-      let pricingRole = 'visitor_car';
-      if (profile.role === 'faculty') pricingRole = 'faculty';
-      else if (profile.role === 'staff') pricingRole = 'staff';
-      else if (profile.role === 'student') pricingRole = 'undergraduate';
+      // Map profiles.role to a list of potential pricing_role enums
+      let userRole = (profile.role || '').toLowerCase();
+      let potentialRoles = ['visitor_car', 'visitor_motorcycle'];
+
+      if (userRole.includes('faculty') || userRole.includes('giảng viên')) {
+        potentialRoles = ['faculty', 'phd', 'graduate', 'special_role'];
+      } else if (userRole.includes('staff') || userRole.includes('nhân viên')) {
+        potentialRoles = ['staff', 'faculty'];
+      } else if (userRole.includes('student') || userRole.includes('sinh viên')) {
+        potentialRoles = ['undergraduate', 'graduate'];
+      }
+
+      console.log("Checking policies for roles:", potentialRoles);
 
       const { data, error } = await supabase
         .from('pricing_policies')
         .select('*')
-        .eq('role', pricingRole)
-        .eq('status', 'active');
+        .in('role', potentialRoles);
+
+      if (error) {
+        console.error("Database error fetching policies:", error);
+      }
 
       if (!error && data) {
-        setPolicies(data);
+        // Filter manually to handle case-insensitivity for 'active' or 'Draft'
+        const filtered = data.filter(p =>
+          p.status?.toLowerCase() === 'active' ||
+          p.status?.toLowerCase() === 'draft'
+        );
+        console.log("Found policies:", filtered);
+        setPolicies(filtered);
       }
     };
     fetchPolicies();
@@ -123,31 +181,51 @@ export default function Payments() {
     }
   };
 
-  const handleSaveVehicle = (e?: React.FormEvent) => {
+  const handleSaveVehicle = async (e?: React.FormEvent) => {
     if (e) e.preventDefault();
+    if (!profile?.id) return;
     if (newVehicle.name && newVehicle.plate) {
-      let updatedVehicles = [...vehicles];
 
-      if (newVehicle.isPrimary) {
-        updatedVehicles = updatedVehicles.map(v => ({ ...v, isPrimary: false }));
-      }
+      const payload = {
+        user_id: profile.id,
+        model_name: newVehicle.name,
+        plate_number: newVehicle.plate,
+        vehicle_type: newVehicle.type,
+        is_primary: newVehicle.isPrimary
+      };
 
-      if (editingId !== null) {
-        setVehicles(updatedVehicles.map(v => v.id === editingId ? { ...v, ...newVehicle } : v));
+      try {
+        if (newVehicle.isPrimary) {
+          // Unset other primary vehicles first
+          await supabase.from('vehicles').update({ is_primary: false }).eq('user_id', profile.id);
+        }
+
+        if (editingId) {
+          const { error } = await supabase.from('vehicles').update(payload).eq('id', editingId);
+          if (error) throw error;
+        } else {
+          const { error } = await supabase.from('vehicles').insert([payload]);
+          if (error) throw error;
+        }
+
+        fetchData();
+        setNewVehicle({ type: 'bike', name: '', plate: '', isPrimary: false });
+        setShowAddForm(false);
         setEditingId(null);
-      } else {
-        const isFirstVehicle = updatedVehicles.length === 0;
-        setVehicles([
-          ...updatedVehicles,
-          {
-            id: Date.now(),
-            ...newVehicle,
-            isPrimary: newVehicle.isPrimary || isFirstVehicle
-          }
-        ]);
+      } catch (err: any) {
+        alert("Error saving vehicle: " + err.message);
       }
-      setNewVehicle({ type: 'bike', name: '', plate: '', isPrimary: false });
-      setShowAddForm(false);
+    }
+  };
+
+  const deleteVehicle = async (id: string) => {
+    if (window.confirm("Are you sure you want to delete this vehicle?")) {
+      const { error } = await supabase.from('vehicles').delete().eq('id', id);
+      if (error) {
+        alert("Error deleting: " + error.message);
+      } else {
+        fetchData();
+      }
     }
   };
 
@@ -392,7 +470,7 @@ export default function Payments() {
                     >
                       <Edit2 size={18} />
                     </button>
-                    <button className="p-2.5 text-slate-400 hover:bg-red-50 hover:text-red-500 rounded-lg transition-all" onClick={() => setVehicles(vehicles.filter(vehicle => vehicle.id !== v.id))}>
+                    <button className="p-2.5 text-slate-400 hover:bg-red-50 hover:text-red-500 rounded-lg transition-all" onClick={() => deleteVehicle(v.id)}>
                       <LogOut size={18} className="rotate-90" />
                     </button>
                   </div>
