@@ -403,16 +403,16 @@ export const Signage: React.FC = () => {
               </h1>
 
               <div className="flex w-[80%] justify-around items-end mt-12">
-                <div className="flex flex-col items-center">
-                  <p className="text-2xl text-slate-300 font-bold uppercase tracking-[0.3em] mb-4">Availability</p>
-                  <p className={`text-[10rem] xl:text-[15rem] font-black leading-none drop-shadow-2xl flex items-baseline gap-4 ${activeDisplay?.available_spaces > 0 && !activeDisplay?.is_emergency ? 'text-[#10b981]' : 'text-rose-600'}`} style={{ textShadow: `0 0 50px ${activeDisplay?.available_spaces > 0 && !activeDisplay?.is_emergency ? '#10b981' : '#e11d48'}cc` }}>
+                <div className="flex flex-col items-center flex-1">
+                  <p className="text-xl md:text-2xl text-slate-400 font-bold uppercase tracking-[0.3em] mb-4">Available Spaces</p>
+                  <p className={`text-[6rem] md:text-[8rem] xl:text-[10rem] font-black leading-none drop-shadow-2xl flex items-baseline gap-4 whitespace-nowrap ${activeDisplay?.available_spaces > 0 && !activeDisplay?.is_emergency ? 'text-[#10b981]' : 'text-rose-600'}`} style={{ textShadow: `0 0 50px ${activeDisplay?.available_spaces > 0 && !activeDisplay?.is_emergency ? '#10b981' : '#e11d48'}cc` }}>
                     <span>{activeDisplay?.is_emergency ? '00' : String(activeDisplay?.available_spaces).padStart(3, '0')}</span>
-                    <span className="text-[6rem] text-slate-500 font-bold opacity-80">/ {activeDisplay?.total_spaces}</span>
+                    <span className="text-[3rem] md:text-[4rem] xl:text-[5rem] text-slate-500 font-bold opacity-80">/&nbsp;{activeDisplay?.total_spaces}</span>
                   </p>
                 </div>
-                <div className="flex flex-col items-center">
-                  <p className="text-2xl text-slate-300 font-bold uppercase tracking-[0.3em] mb-4">Status</p>
-                  <p className={`text-[10rem] xl:text-[15rem] font-black leading-none drop-shadow-2xl ${activeDisplay?.status === 'OPEN' && !activeDisplay?.is_emergency ? 'text-[#ea580c]' : 'text-rose-600'}`} style={{ textShadow: `0 0 50px ${activeDisplay?.status === 'OPEN' && !activeDisplay?.is_emergency ? '#ea580c' : '#e11d48'}cc` }}>
+                <div className="flex flex-col items-center flex-1 text-center">
+                  <p className="text-xl md:text-2xl text-slate-400 font-bold uppercase tracking-[0.3em] mb-4">Status</p>
+                  <p className={`text-[6rem] md:text-[8rem] xl:text-[10rem] font-black leading-none drop-shadow-2xl whitespace-nowrap ${activeDisplay?.status === 'OPEN' && !activeDisplay?.is_emergency ? 'text-[#ea580c]' : 'text-rose-600'}`} style={{ textShadow: `0 0 50px ${activeDisplay?.status === 'OPEN' && !activeDisplay?.is_emergency ? '#ea580c' : '#e11d48'}cc` }}>
                     {activeDisplay?.is_emergency ? 'EVAC' : activeDisplay?.status}
                   </p>
                 </div>
