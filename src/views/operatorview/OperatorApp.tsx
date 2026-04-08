@@ -10,6 +10,17 @@ import { useProfile } from '../../shared/hooks/useProfile';
 export default function OperatorApp() {
   const { profile, loading, fetchError } = useProfile();
   const [activeTab, setActiveTab] = useState('dashboard');
+  
+  // Manual Handling Action State
+  const [pendingManualAction, setPendingManualAction] = useState<{
+    type: 'lost_card' | 'manual_entry' | 'manual_exit' | 'override_gate' | null;
+    data?: any;
+  }>({ type: null });
+
+  const handleManualAction = (actionType: 'lost_card' | 'manual_entry' | 'manual_exit' | 'override_gate' | 'manual_handling', actionData?: any) => {
+    setPendingManualAction({ type: actionType, data: actionData });
+    setActiveTab('manual-handling');
+  };
 
   useEffect(() => {
     if (!loading && !fetchError && (!profile || profile.role !== 'operator')) {
@@ -68,15 +79,24 @@ export default function OperatorApp() {
     );
     switch (activeTab) {
       case 'dashboard':
-        return <Dashboard />;
+        return (
+          <Dashboard 
+            onManualAction={handleManualAction}
+          />
+        );
       case 'gate-control':
         return <GateControl />;
       case 'manual-handling':
-        return <ManualHandling />;
+        return (
+          <ManualHandling 
+            pendingAction={pendingManualAction}
+            clearPendingAction={() => setPendingManualAction({ type: null })}
+          />
+        );
       case 'settings':
         return <Settings />;
       default:
-        return <Dashboard />;
+        return <Dashboard onManualAction={handleManualAction} />;
     }
   };
 

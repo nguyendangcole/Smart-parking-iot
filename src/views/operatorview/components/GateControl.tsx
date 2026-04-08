@@ -100,6 +100,21 @@ export default function GateControl() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [feedback, setFeedback] = useState<Feedback | null>(null);
 
+  // Gate Type Filter
+  const [gateFilter, setGateFilter] = useState<'all' | 'entrance' | 'exit'>('all');
+
+  // Filter gates based on type
+  const getFilteredGates = () => {
+    if (gateFilter === 'all') return gates;
+    if (gateFilter === 'entrance') {
+      return gates.filter(g => g.name.toLowerCase().includes('entrance') || g.name.toLowerCase().includes('entry') || g.id === 'A' || g.id === 'D');
+    }
+    if (gateFilter === 'exit') {
+      return gates.filter(g => g.name.toLowerCase().includes('exit') || g.id === 'C');
+    }
+    return gates;
+  };
+
   const handleActionClick = (gate: Gate, type: 'open' | 'close' | 'emergency_lock') => {
     if (gate.status === 'Offline') {
       setFeedback({
@@ -222,9 +237,36 @@ export default function GateControl() {
           <p className="text-slate-500 text-sm">Monitor and override gate mechanisms in real-time across the HCMUT campus.</p>
         </div>
         <div className="flex bg-white p-1 rounded-xl shadow-sm border border-slate-200">
-          <button className="px-6 py-2 bg-primary text-white rounded-lg text-sm font-bold">All Gates</button>
-          <button className="px-6 py-2 text-slate-500 hover:text-primary rounded-lg text-sm font-bold transition-colors">Entrance</button>
-          <button className="px-6 py-2 text-slate-500 hover:text-primary rounded-lg text-sm font-bold transition-colors">Exit</button>
+          <button 
+            onClick={() => setGateFilter('all')}
+            className={`px-6 py-2 rounded-lg text-sm font-bold transition-all ${
+              gateFilter === 'all'
+                ? 'bg-primary text-white shadow-sm'
+                : 'text-slate-500 hover:text-primary'
+            }`}
+          >
+            All Gates ({gates.length})
+          </button>
+          <button 
+            onClick={() => setGateFilter('entrance')}
+            className={`px-6 py-2 rounded-lg text-sm font-bold transition-all ${
+              gateFilter === 'entrance'
+                ? 'bg-primary text-white shadow-sm'
+                : 'text-slate-500 hover:text-primary'
+            }`}
+          >
+            Entrance ({gates.filter(g => g.name.toLowerCase().includes('entrance') || g.name.toLowerCase().includes('entry') || g.id === 'A' || g.id === 'D').length})
+          </button>
+          <button 
+            onClick={() => setGateFilter('exit')}
+            className={`px-6 py-2 rounded-lg text-sm font-bold transition-all ${
+              gateFilter === 'exit'
+                ? 'bg-primary text-white shadow-sm'
+                : 'text-slate-500 hover:text-primary'
+            }`}
+          >
+            Exit ({gates.filter(g => g.name.toLowerCase().includes('exit') || g.id === 'C').length})
+          </button>
         </div>
       </header>
 
@@ -241,7 +283,7 @@ export default function GateControl() {
       <div className="grid grid-cols-1 lg:grid-cols-4 gap-8">
         {/* Gate Panels Grid */}
         <div className="lg:col-span-3 grid grid-cols-1 md:grid-cols-2 gap-6">
-          {gates.map((gate) => {
+          {getFilteredGates().map((gate) => {
             const lockIcon = getLockIcon(gate.lockState);
             const LockIcon = lockIcon.icon;
 
