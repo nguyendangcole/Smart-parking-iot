@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
+import { useNavigate } from 'react-router-dom';
 import { 
   QrCode, 
   Car, 
@@ -27,6 +28,7 @@ interface VisitorSession {
 }
 
 export default function VisitorApp() {
+  const navigate = useNavigate();
   const [step, setStep] = useState<VisitorStep>('selection');
   const [session, setSession] = useState<VisitorSession | null>(null);
   const [loading, setLoading] = useState(false);
@@ -186,7 +188,7 @@ export default function VisitorApp() {
             </div>
 
             <button 
-              onClick={() => window.location.reload()}
+              onClick={() => navigate('/login')}
               className="text-slate-400 font-bold text-sm hover:text-slate-600 transition-colors py-2"
             >
               Back to Corporate Login

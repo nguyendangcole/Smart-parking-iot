@@ -1,16 +1,15 @@
-import React, { useState } from 'react';
+import React from 'react';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { useProfile } from './shared/hooks/useProfile';
 import MemberApp from './views/memberview/MemberApp';
 import AdminApp from './views/adminview/AdminApp';
 import OperatorApp from './views/operatorview/OperatorApp';
 import Login from './shared/components/Login';
-
 import VisitorApp from './views/visitorview/VisitorApp';
+import LandingPage from './views/landingview/LandingPage';
 
 function App() {
-  const { profile, loading, fetchError } = useProfile();
-  const [showVisitorView, setShowVisitorView] = useState(false);
+  const { profile, loading } = useProfile();
 
   // Splash Screen / Loading State
   if (loading) {
@@ -22,33 +21,33 @@ function App() {
     );
   }
 
-  // Visitor View (Unauthenticated)
-  if (!profile && showVisitorView) {
-    return <VisitorApp />;
-  }
-
-  // Handle Shared Login (If not logged in and not choosing visitor mode)
-  if (!profile && !showVisitorView) {
-    return (
-      <Login
-        onLogin={() => window.location.reload()}
-        onVisitor={() => setShowVisitorView(true)}
-      />
-    );
-  }
-
-  // Unified Auth Router
   return (
     <BrowserRouter>
       <Routes>
-        <Route path="/*" element={
-          profile?.role === 'admin' ? <AdminApp /> :
-            profile?.role === 'operator' ? <OperatorApp /> :
-              <MemberApp />
-        } />
-
-        {/* Redirect any other path to the root auth logic */}
-        <Route path="*" element={<Navigate to="/" replace />} />
+        {/* Unauthenticated Routes */}
+        {!profile ? (
+          <>
+            <Route path="/" element={<LandingPage />} />
+            <Route path="/login" element={<Login onLogin={() => window.location.reload()} />} />
+            <Route path="/visitor" element={<VisitorApp />} />
+            <Route path="*" element={<Navigate to="/" replace />} />
+          </>
+        ) : (
+          /* Authenticated Dashboard Router */
+          <>
+            <Route 
+              path="/*" 
+              element={
+                profile.role === 'admin' ? <AdminApp /> :
+                profile.role === 'operator' ? <OperatorApp /> :
+                <MemberApp />
+              } 
+            />
+            {/* Redirect root to current dashboard if logged in */}
+            <Route path="/login" element={<Navigate to="/" replace />} />
+            <Route path="/visitor" element={<Navigate to="/" replace />} />
+          </>
+        )}
       </Routes>
     </BrowserRouter>
   );

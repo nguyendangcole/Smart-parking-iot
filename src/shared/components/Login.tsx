@@ -13,15 +13,16 @@ import {
   EyeOff
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
+import { useNavigate } from 'react-router-dom';
 import { supabase } from '../supabase';
 import { User } from '@supabase/supabase-js';
 
 interface LoginProps {
   onLogin: () => void;
-  onVisitor: () => void;
 }
 
-export default function Login({ onLogin, onVisitor }: LoginProps) {
+export default function Login({ onLogin }: LoginProps) {
+  const navigate = useNavigate();
   const [showSSOForm, setShowSSOForm] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [email, setEmail] = useState('');
@@ -77,8 +78,11 @@ export default function Login({ onLogin, onVisitor }: LoginProps) {
           <div className="absolute inset-0 bg-gradient-to-tr from-primary/90 to-transparent"></div>
         </div>
         <div className="relative z-10 p-16 flex flex-col justify-between h-full w-full">
-          <div className="flex items-center gap-3">
-            <div className="size-12 bg-white rounded-xl flex items-center justify-center shadow-lg">
+          <div 
+            onClick={() => navigate('/')}
+            className="flex items-center gap-3 cursor-pointer group hover:opacity-80 transition-opacity"
+          >
+            <div className="size-12 bg-white rounded-xl flex items-center justify-center shadow-lg group-hover:scale-105 transition-transform">
               <ParkingCircle size={32} className="text-primary" />
             </div>
             <span className="text-white text-2xl font-bold tracking-tight">HCMUT Smart Parking</span>
@@ -211,7 +215,7 @@ export default function Login({ onLogin, onVisitor }: LoginProps) {
           </div>
 
           <button
-            onClick={onVisitor}
+            onClick={() => navigate('/visitor')}
             className="w-full group cursor-pointer bg-slate-50 hover:bg-slate-100 border border-slate-200 p-6 rounded-2xl transition-all text-left"
           >
             <div className="flex items-center justify-between">
