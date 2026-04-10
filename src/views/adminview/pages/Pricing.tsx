@@ -1,6 +1,7 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { supabase } from '../../../shared/supabase';
+import { recordAuditLog } from '../../../shared/utils/audit';
 
 type Role = 'Undergraduate' | 'Graduate' | 'PhD' | 'Faculty' | 'Staff' | 'Visitor Motorcycle' | 'Visitor Car';
 type PlanType = 'monthly' | 'per-entry' | 'handling fee';
@@ -161,8 +162,21 @@ export const Pricing: React.FC = () => {
     const { error } = await supabase.from('pricing_policies').insert([dbPayload]);
     if (error) {
       setErrorText(error.message);
+      recordAuditLog({
+        action: `Failed to create policy: ${newPlan.name}`,
+        entityType: 'Pricing',
+        status: 'FAILED',
+        metadata: { error: error.message, payload: dbPayload }
+      });
       return;
     }
+
+    recordAuditLog({
+      action: `Created new pricing policy: ${newPlan.name}`,
+      entityType: 'Pricing',
+      status: 'SUCCESS',
+      metadata: { payload: dbPayload }
+    });
 
     // Refresh policies
     fetchPolicies();
@@ -192,8 +206,21 @@ export const Pricing: React.FC = () => {
     const { error } = await supabase.from('pricing_policies').update(dbPayload).eq('id', newPlan.id);
     if (error) {
       setErrorText(error.message);
+      recordAuditLog({
+        action: `Failed to update policy: ${newPlan.name}`,
+        entityType: 'Pricing',
+        status: 'FAILED',
+        metadata: { id: newPlan.id, error: error.message }
+      });
       return;
     }
+
+    recordAuditLog({
+      action: `Updated pricing policy: ${newPlan.name}`,
+      entityType: 'Pricing',
+      status: 'SUCCESS',
+      metadata: { id: newPlan.id, changes: dbPayload }
+    });
 
     fetchPolicies();
     setIsModalOpen(false);
@@ -231,6 +258,12 @@ export const Pricing: React.FC = () => {
     const { error } = await supabase.from('pricing_policies').update({ status: newStatus }).eq('id', plan.id);
     if (!error) {
       fetchPolicies();
+      recordAuditLog({
+        action: `${newStatus === 'active' ? 'Activated' : 'Deactivated'} pricing policy: ${plan.name}`,
+        entityType: 'Pricing',
+        status: 'SUCCESS',
+        metadata: { id: plan.id }
+      });
     } else {
       alert('Error toggling policy: ' + error.message);
     }

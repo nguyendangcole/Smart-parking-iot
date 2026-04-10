@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { supabase } from '../../../shared/supabase';
+import { recordAuditLog } from '../../../shared/utils/audit';
 
 type UserRole = 'student' | 'graduate' | 'doctoral' | 'faculty' | 'staff' | 'visitor' | 'operator' | 'admin';
 type UserStatus = 'active' | 'inactive' | 'blocked' | 'suspended';
@@ -82,8 +83,21 @@ export const Users: React.FC = () => {
 
     if (error) {
       setErrorText(error.message);
+      recordAuditLog({
+        action: `Failed to update user privileges: ${selectedUser.email}`,
+        entityType: 'User Management',
+        status: 'FAILED',
+        metadata: { id: selectedUser.id, error: error.message }
+      });
       return;
     }
+
+    recordAuditLog({
+      action: `Updated user privileges: ${selectedUser.email}`,
+      entityType: 'User Management',
+      status: 'SUCCESS',
+      metadata: { id: selectedUser.id, changes: editForm }
+    });
 
     fetchUsers();
     setIsEditModalOpen(false);
@@ -110,8 +124,21 @@ export const Users: React.FC = () => {
 
     if (error) {
       setErrorText(JSON.stringify(error.message));
+      recordAuditLog({
+        action: `Failed to create user: ${createForm.email}`,
+        entityType: 'User Management',
+        status: 'FAILED',
+        metadata: { error: error.message }
+      });
       return;
     }
+
+    recordAuditLog({
+      action: `Created new user: ${createForm.email}`,
+      entityType: 'User Management',
+      status: 'SUCCESS',
+      metadata: { role: createForm.role }
+    });
 
     if (data && data.success === false) {
       setErrorText(data.message);
@@ -153,7 +180,15 @@ export const Users: React.FC = () => {
   const toggleBlockStatus = async (user: UserProfile) => {
     const newStatus = user.status === 'blocked' ? 'active' : 'blocked';
     const { error } = await supabase.from('profiles').update({ status: newStatus }).eq('id', user.id);
-    if (!error) fetchUsers();
+    if (!error) {
+        fetchUsers();
+        recordAuditLog({
+            action: `${newStatus === 'blocked' ? 'Blocked' : 'Unblocked'} user: ${user.email}`,
+            entityType: 'User Management',
+            status: 'WARN',
+            metadata: { id: user.id }
+        });
+    }
   };
 
   const filteredUsers = useMemo(() => {
