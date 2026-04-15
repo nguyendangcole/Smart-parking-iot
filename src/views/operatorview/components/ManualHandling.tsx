@@ -23,6 +23,8 @@ import {
   LogIn,
   LogOut
 } from 'lucide-react';
+import { useProfile } from '../../../shared/hooks/useProfile';
+import { operatorService } from '../../../shared/services/operatorService';
 import LostCardModal from './LostCardModal';
 import ManualEntryModal from './ManualEntryModal';
 import OverrideGateModal from './OverrideGateModal';
@@ -36,18 +38,106 @@ export default function ManualHandling({
   clearPendingAction?: () => void;
   onReturnToDashboard?: () => void;
 }) {
+  const { profile } = useProfile();
+  
   // Form State
   const [searchQuery, setSearchQuery] = useState('');
   const [plate, setPlate] = useState('');
   const [studentId, setStudentId] = useState('');
   const [reason, setReason] = useState('Lost RFID Card');
   const [supervisorCode, setSupervisorCode] = useState('');
+  
+  // Data State
+  const [manualRequests, setManualRequests] = useState<any[]>([]);
+  const [loading, setLoading] = useState(false);
 
   // Modal States
   const [showManualHandlingModal, setShowManualHandlingModal] = useState(false);
   const [activeModalTab, setActiveModalTab] = useState<'lost_card' | 'manual_entry' | 'manual_exit' | 'override_gate'>('lost_card');
   const [showHelpDocs, setShowHelpDocs] = useState(false);
   const [manualActionType, setManualActionType] = useState<'entry' | 'exit'>('entry');
+  const [showLostCardModal, setShowLostCardModal] = useState(false);
+  const [showManualEntryModal, setShowManualEntryModal] = useState(false);
+  const [showOverrideModal, setShowOverrideModal] = useState(false);
+
+  // Fetch manual requests
+  useEffect(() => {
+    const fetchManualRequests = async () => {
+      if (!profile?.id) return;
+      
+      try {
+        const requests = await operatorService.getManualHandlingRequests(profile.id);
+        setManualRequests(requests);
+      } catch (error) {
+        console.error('Error fetching manual requests:', error);
+      }
+    };
+
+    fetchManualRequests();
+  }, [profile?.id]);
+
+  // Handler functions
+  const handleCreateLostCardRequest = async () => {
+    if (!profile?.id || !plate || !studentId) return;
+    
+    setLoading(true);
+    try {
+      await operatorService.createManualHandlingRequest({
+        operator_id: profile.id,
+        request_type: 'lost_card',
+        vehicle_plate: plate,
+        student_id: studentId,
+        reason: reason,
+        supervisor_code: supervisorCode
+      });
+      
+      // Refresh requests
+      const requests = await operatorService.getManualHandlingRequests(profile.id);
+      setManualRequests(requests);
+      
+      // Reset form
+      setPlate('');
+      setStudentId('');
+      setSupervisorCode('');
+      setShowLostCardModal(false);
+      
+    } catch (error) {
+      console.error('Error creating lost card request:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleCreateManualEntryRequest = async () => {
+    if (!profile?.id || !plate) return;
+    
+    setLoading(true);
+    try {
+      await operatorService.createManualHandlingRequest({
+        operator_id: profile.id,
+        request_type: manualActionType === 'entry' ? 'manual_entry' : 'manual_exit',
+        vehicle_plate: plate,
+        student_id: studentId,
+        reason: reason,
+        supervisor_code: supervisorCode
+      });
+      
+      // Refresh requests
+      const requests = await operatorService.getManualHandlingRequests(profile.id);
+      setManualRequests(requests);
+      
+      // Reset form
+      setPlate('');
+      setStudentId('');
+      setSupervisorCode('');
+      setShowManualEntryModal(false);
+      
+    } catch (error) {
+      console.error('Error creating manual entry request:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   // Activity Logging
   const [logs, setLogs] = useState([

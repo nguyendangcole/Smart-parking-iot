@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { 
   Search, 
   Bell, 
@@ -16,10 +16,12 @@ import {
   Unlock,
   X
 } from 'lucide-react';
+import { useProfile } from '../../../shared/hooks/useProfile';
+import { operatorService, GateAction } from '../../../shared/services/operatorService';
 import GateActionModal from './GateActionModal';
 import ActionFeedback from './ActionFeedback';
 
-interface Gate {
+interface LocalGate {
   id: string;
   name: string;
   zone: string;
@@ -46,56 +48,108 @@ interface Feedback {
   timestamp: string;
 }
 
-export default function GateControl() {
-  const [gates, setGates] = useState<Gate[]>([
-    { 
-      id: 'A', 
-      name: 'Main Entrance', 
-      zone: 'North Campus', 
-      status: 'Online', 
-      img: 'https://picsum.photos/seed/gateA_live/600/400',
-      recTime: '10:45:22',
-      lockState: 'open'
-    },
-    { 
-      id: 'B', 
-      name: 'Staff Parking', 
-      zone: 'East Tower', 
-      status: 'Alert', 
-      img: 'https://picsum.photos/seed/gateB_live/600/400',
-      alert: 'Obstruction Detected',
-      lockState: 'closed'
-    },
-    { 
-      id: 'C', 
-      name: 'Library Exit', 
-      zone: 'Central Hub', 
-      status: 'Offline', 
-      img: '',
-      lockState: 'closed'
-    },
-    { 
-      id: 'D', 
-      name: 'Dormitory Entry', 
-      zone: 'Residential', 
-      status: 'Online', 
-      img: 'https://picsum.photos/seed/gateD_live/600/400',
-      lockState: 'open'
-    },
-  ]);
+// Helper function to get gate camera image
+const getGateImage = (gateName: string, gateId: string) => {
+  const imageMap: Record<string, string> = {
+    'Main Entrance Gate': 'https://picsum.photos/seed/gateA_live/600/400',
+    'North Exit Gate': 'https://picsum.photos/seed/gateB_live/600/400',
+    'South Entry Gate': 'https://picsum.photos/seed/gateC_live/600/400',
+    'Emergency Exit Gate': 'https://picsum.photos/seed/gateD_live/600/400',
+    'Staff Parking Gate': 'https://picsum.photos/seed/gateE_live/600/400',
+    'Visitor Parking Gate': 'https://picsum.photos/seed/gateF_live/600/400'
+  };
+  
+  return imageMap[gateName] || `https://picsum.photos/seed/${gateId}_live/600/400`;
+};
 
-  const [history, setHistory] = useState<HistoryEntry[]>([
-    { action: 'Gate A Opened Manually', user: 'By Operator Nguyen Van A', time: '10:42 AM', type: 'open', reason: 'Vehicle waiting' },
-    { action: 'Gate B Emergency Locked', user: 'Auto-lock: Obstruction Sensor', time: '10:35 AM', type: 'lock', reason: 'Obstruction detected' },
-    { action: 'Gate D Closed Manually', user: 'By Admin System', time: '10:15 AM', type: 'close' },
-    { action: 'Gate A Opened Manually', user: 'By Operator Nguyen Van A', time: '09:58 AM', type: 'open' },
-    { action: 'Gate A Closed Manually', user: 'By Operator Nguyen Van A', time: '09:55 AM', type: 'close' },
-  ]);
+export default function GateControl() {
+  const { profile } = useProfile();
+  const [gates, setGates] = useState<LocalGate[]>([]);
+  const [loading, setLoading] = useState(true);
+  
+  // Fetch gates data from backend
+  useEffect(() => {
+    const fetchGates = async () => {
+      try {
+        const gatesData = await operatorService.getGates();
+        const historyData = await operatorService.getGateActionsHistory();
+        
+        setGates(gatesData.map(gate => ({
+          id: gate.id,
+          name: gate.gate_name,
+          zone: gate.zone,
+          status: gate.status.charAt(0).toUpperCase() + gate.status.slice(1) as 'Online' | 'Alert' | 'Offline',
+          img: gate.camera_url || getGateImage(gate.gate_name, gate.id),
+          recTime: gate.last_heartbeat ? new Date(gate.last_heartbeat).toLocaleTimeString() : undefined,
+          alert: gate.status === 'alert' ? 'Connection unstable' : undefined,
+          lockState: gate.lock_state
+        })));
+        
+        setHistory(historyData);
+      } catch (error) {
+        console.error('Error fetching gates data:', error);
+        // Fallback to mock data if backend fails
+        setGates([
+          { 
+            id: 'A', 
+            name: 'Main Entrance', 
+            zone: 'North Campus', 
+            status: 'Online', 
+            img: 'https://picsum.photos/seed/gateA_live/600/400',
+            recTime: '10:45:22',
+            lockState: 'open'
+          },
+          { 
+            id: 'B', 
+            name: 'Staff Parking', 
+            zone: 'East Tower', 
+            status: 'Alert', 
+            img: 'https://picsum.photos/seed/gateB_live/600/400',
+            alert: 'Obstruction Detected',
+            lockState: 'closed'
+          },
+          { 
+            id: 'C', 
+            name: 'Library Exit', 
+            zone: 'Central Hub', 
+            status: 'Offline', 
+            img: 'https://picsum.photos/seed/gateC_offline/600/400',
+            alert: 'Connection Lost',
+            lockState: 'locked'
+          },
+          { 
+            id: 'D', 
+            name: 'Dormitory Entry', 
+            zone: 'Residential', 
+            status: 'Online', 
+            img: 'https://picsum.photos/seed/gateD_live/600/400',
+            lockState: 'open'
+          },
+        ]);
+        
+        // Fallback history data
+        setHistory([
+          { action: 'Gate A Opened Manually', user: 'By Operator Nguyen Van A', time: '10:42 AM', type: 'open', reason: 'Vehicle waiting' },
+          { action: 'Gate B Emergency Locked', user: 'Auto-lock: Obstruction Sensor', time: '10:35 AM', type: 'lock', reason: 'Obstruction detected' },
+          { action: 'Gate D Closed Manually', user: 'By Admin System', time: '10:15 AM', type: 'close' },
+          { action: 'Gate A Opened Manually', user: 'By Operator Nguyen Van A', time: '09:58 AM', type: 'open' },
+          { action: 'Gate A Closed Manually', user: 'By Operator Nguyen Van A', time: '09:55 AM', type: 'close' },
+        ]);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchGates();
+  }, []);
+
+  
+  const [history, setHistory] = useState<HistoryEntry[]>([]);
 
   // Modal & Feedback State
   const [showModal, setShowModal] = useState(false);
   const [showClearConfirm, setShowClearConfirm] = useState(false);
-  const [selectedGate, setSelectedGate] = useState<Gate | null>(null);
+  const [selectedGate, setSelectedGate] = useState<LocalGate | null>(null);
   const [actionType, setActionType] = useState<'open' | 'close' | 'emergency_lock'>('open');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [feedback, setFeedback] = useState<Feedback | null>(null);
@@ -115,7 +169,7 @@ export default function GateControl() {
     return gates;
   };
 
-  const handleActionClick = (gate: Gate, type: 'open' | 'close' | 'emergency_lock') => {
+  const handleActionClick = (gate: LocalGate, type: 'open' | 'close' | 'emergency_lock') => {
     if (gate.status === 'Offline') {
       setFeedback({
         type: 'error',
@@ -143,7 +197,7 @@ export default function GateControl() {
   };
 
   const handleConfirmAction = async (reason: string) => {
-    if (!selectedGate) return;
+    if (!selectedGate || !profile?.id) return;
 
     setIsSubmitting(true);
     setFeedback({
@@ -154,21 +208,28 @@ export default function GateControl() {
       timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
     });
 
-    // Simulate API call
-    setTimeout(() => {
-      // Update gate state
-      setGates(prev =>
-        prev.map(g => {
-          if (g.id === selectedGate.id) {
-            let newLockState = g.lockState;
-            if (actionType === 'open') newLockState = 'open';
-            else if (actionType === 'close') newLockState = 'closed';
-            else if (actionType === 'emergency_lock') newLockState = 'locked';
-            return { ...g, lockState: newLockState };
-          }
-          return g;
-        })
-      );
+    try {
+      // Call backend service
+      const actionMap = {
+        'open': 'open' as const,
+        'close': 'close' as const,
+        'emergency_lock': 'lock' as const
+      };
+      
+      await operatorService.controlGate(selectedGate.id, actionMap[actionType], reason);
+      
+      // Refresh gates data
+      const gatesData = await operatorService.getGates();
+      setGates(gatesData.map(gate => ({
+        id: gate.id,
+        name: gate.gate_name,
+        zone: gate.zone,
+        status: gate.status.charAt(0).toUpperCase() + gate.status.slice(1) as 'Online' | 'Alert' | 'Offline',
+        img: gate.camera_url || getGateImage(gate.gate_name, gate.id),
+        recTime: gate.last_heartbeat ? new Date(gate.last_heartbeat).toLocaleTimeString() : undefined,
+        alert: gate.status === 'alert' ? 'Connection unstable' : undefined,
+        lockState: gate.lock_state
+      })));
 
       // Add to history
       const actionLabels = {
@@ -196,10 +257,20 @@ export default function GateControl() {
         timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
       });
 
+    } catch (error) {
+      console.error('Error controlling gate:', error);
+      setFeedback({
+        type: 'error',
+        message: 'Failed to control gate. Please try again.',
+        action: actionType,
+        gateName: selectedGate.name,
+        timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+      });
+    } finally {
       setIsSubmitting(false);
       setShowModal(false);
       setSelectedGate(null);
-    }, 1500);
+    }
   };
 
   const handleClearHistory = () => {
