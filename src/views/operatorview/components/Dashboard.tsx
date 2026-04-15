@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import {
   Car, Cpu, AlertTriangle, TrendingUp,
-  RefreshCw, Search, Bell, MoreVertical, LogIn, Eye, LogOut, DollarSign
+  RefreshCw, Search, Bell, MoreVertical, LogIn, Eye, LogOut, DollarSign, QrCode
 } from 'lucide-react';
 import { useProfile } from '../../../shared/hooks/useProfile';
 import { supabase } from '../../../shared/supabase';
@@ -11,8 +11,15 @@ import LostCardModal from './LostCardModal';
 import ManualEntryModal from './ManualEntryModal';
 import GateStatusPanel from './GateStatusPanel';
 import IncidentAlerts from './IncidentAlerts';
+import TicketScannerModal from './TicketScannerModal';
+import GatewayStatusBanner from './GatewayStatusBanner';
+import QuickStatsPanel from './QuickStatsPanel';
 
-export default function Dashboard() {
+export default function Dashboard({ 
+  onManualAction 
+}: { 
+  onManualAction?: (actionType: 'lost_card' | 'manual_entry' | 'manual_exit' | 'override_gate' | 'manual_handling', actionData?: any) => void 
+}) {
   const { profile } = useProfile();
 
   // KPI Data
@@ -23,7 +30,9 @@ export default function Dashboard() {
   // Occupied Slots Table
   const [occupiedList, setOccupiedList] = useState<any[]>([]);
   const [showAllSlots, setShowAllSlots] = useState(false);
+  // Slot Menu State
   const [openSlotMenuId, setOpenSlotMenuId] = useState<string | null>(null);
+  const [slotMenuPosition, setSlotMenuPosition] = useState({ top: 0, left: 0 });
   
   // Search
   const [searchQuery, setSearchQuery] = useState('');
@@ -35,8 +44,38 @@ export default function Dashboard() {
   const [showOverrideModal, setShowOverrideModal] = useState(false);
   const [showLostCardModal, setShowLostCardModal] = useState(false);
   const [showManualEntryModal, setShowManualEntryModal] = useState(false);
+  const [showTicketScannerModal, setShowTicketScannerModal] = useState(false);
   const [manualAction, setManualAction] = useState<'entry' | 'exit'>('entry');
   const [selectedGate, setSelectedGate] = useState<{ id: string; name: string } | null>(null);
+  
+  // Notification States
+  const [showNotifications, setShowNotifications] = useState(false);
+  const [notifications, setNotifications] = useState([
+    {
+      id: '1',
+      type: 'alert',
+      title: 'Zone A - High Occupancy',
+      message: 'Zone A is now 85% full',
+      timestamp: new Date(Date.now() - 5 * 60000),
+      read: false
+    },
+    {
+      id: '2',
+      type: 'incident',
+      title: 'Gate 2 Offline',
+      message: 'Exit gate 2 connection lost - manual override may be needed',
+      timestamp: new Date(Date.now() - 15 * 60000),
+      read: false
+    },
+    {
+      id: '3',
+      type: 'info',
+      title: 'System Update',
+      message: 'Routine maintenance completed successfully',
+      timestamp: new Date(Date.now() - 2 * 3600000),
+      read: true
+    },
+  ]);
 
   // Fetch dữ liệu thật
   const fetchData = async () => {
@@ -100,6 +139,58 @@ export default function Dashboard() {
 
   const occupancyRate = totalSlots > 0 ? Math.round((occupiedSlots / totalSlots) * 100) : 0;
 
+  // Notification Handlers
+  const dismissNotification = (id: string) => {
+    setNotifications(notifications.filter(n => n.id !== id));
+  };
+
+  const markAllAsRead = () => {
+    setNotifications(notifications.map(n => ({ ...n, read: true })));
+  };
+
+  const unreadCount = notifications.filter(n => !n.read).length;
+
+  const getNotificationIcon = (type: string) => {
+    if (type === 'alert') return <AlertTriangle size={16} className="text-orange-500" />;
+    if (type === 'incident') return <AlertTriangle size={16} className="text-red-500" />;
+    return <Bell size={16} className="text-blue-500" />;
+  };
+
+  const formatNotificationTime = (date: Date) => {
+    const now = new Date();
+    const diffMs = now.getTime() - date.getTime();
+    const diffMins = Math.floor(diffMs / 60000);
+    const diffHours = Math.floor(diffMs / 3600000);
+    const diffDays = Math.floor(diffMs / 86400000);
+
+    if (diffMins < 1) return 'Just now';
+    if (diffMins < 60) return `${diffMins}m ago`;
+    if (diffHours < 24) return `${diffHours}h ago`;
+    if (diffDays < 7) return `${diffDays}d ago`;
+    return date.toLocaleDateString();
+  };
+
+  // Close notification panel when clicking outside
+  React.useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      const notificationButton = document.querySelector('[aria-label="notification-button"]');
+      const notificationPanel = document.querySelector('[aria-label="notification-panel"]');
+      
+      if (
+        showNotifications &&
+        !notificationButton?.contains(event.target as Node) &&
+        !notificationPanel?.contains(event.target as Node)
+      ) {
+        setShowNotifications(false);
+      }
+    };
+
+    if (showNotifications) {
+      document.addEventListener('mousedown', handleClickOutside);
+      return () => document.removeEventListener('mousedown', handleClickOutside);
+    }
+  }, [showNotifications]);
+
   // KPI Cards - Real Data
   const kpis = [
     {
@@ -142,10 +233,105 @@ export default function Dashboard() {
           />
         </div>
         <div className="flex items-center gap-4">
-          <button className="relative p-2 rounded-full hover:bg-slate-100 text-slate-600 transition-colors">
-            <Bell size={20} />
-            <span className="absolute top-2 right-2 w-2 h-2 bg-red-500 rounded-full border-2 border-white"></span>
+          <button
+            onClick={() => setShowTicketScannerModal(true)}
+            title="Scan visitor tickets"
+            className="px-4 py-2 rounded-lg bg-blue-500 text-white text-sm font-semibold hover:bg-blue-600 transition-colors flex items-center gap-2"
+          >
+            <QrCode size={16} /> Ticket Scanner
           </button>
+          <button className="relative p-2 rounded-full hover:bg-slate-100 text-slate-600 transition-colors"
+            aria-label="notification-button"
+            onClick={() => setShowNotifications(!showNotifications)}>
+            <Bell size={20} />
+            {unreadCount > 0 && (
+              <span className="absolute top-2 right-2 w-2 h-2 bg-red-500 rounded-full border-2 border-white"></span>
+            )}
+          </button>
+
+          {/* Notifications Dropdown Panel */}
+          {showNotifications && (
+            <div className="absolute top-12 right-0 w-96 bg-white rounded-lg shadow-2xl border border-slate-200 z-50 max-h-96 overflow-hidden flex flex-col"
+              aria-label="notification-panel"
+            >
+              {/* Header */}
+              <div className="p-4 border-b border-slate-100 bg-slate-50">
+                <div className="flex items-center justify-between mb-2">
+                  <h3 className="font-bold text-slate-800">Notifications</h3>
+                  {unreadCount > 0 && (
+                    <span className="text-xs bg-red-100 text-red-700 px-2 py-1 rounded-full font-semibold">
+                      {unreadCount} unread
+                    </span>
+                  )}
+                </div>
+                {unreadCount > 0 && (
+                  <button
+                    onClick={markAllAsRead}
+                    className="text-xs text-primary font-semibold hover:underline"
+                  >
+                    Mark all as read
+                  </button>
+                )}
+              </div>
+
+              {/* Notifications List */}
+              <div className="overflow-y-auto flex-1">
+                {notifications.length > 0 ? (
+                  notifications.map((notif) => (
+                    <div
+                      key={notif.id}
+                      className={`p-4 border-b border-slate-100 hover:bg-slate-50 transition-colors ${
+                        !notif.read ? 'bg-blue-50' : ''
+                      }`}
+                    >
+                      <div className="flex gap-3">
+                        <div className="flex-shrink-0 mt-1">
+                          {getNotificationIcon(notif.type)}
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-start justify-between gap-2">
+                            <div>
+                              <p className="font-semibold text-sm text-slate-800">{notif.title}</p>
+                              <p className="text-sm text-slate-600 mt-0.5">{notif.message}</p>
+                            </div>
+                            <button
+                              onClick={() => dismissNotification(notif.id)}
+                              className="text-slate-400 hover:text-slate-600 transition-colors flex-shrink-0"
+                              title="Dismiss notification"
+                            >
+                              <span className="text-lg leading-none">×</span>
+                            </button>
+                          </div>
+                          <p className="text-xs text-slate-400 mt-2">
+                            {formatNotificationTime(notif.timestamp)}
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+                  ))
+                ) : (
+                  <div className="p-8 text-center text-slate-400">
+                    <p className="text-sm">No notifications</p>
+                  </div>
+                )}
+              </div>
+
+              {/* Footer */}
+              {notifications.length > 0 && (
+                <div className="p-3 border-t border-slate-100 bg-slate-50 text-center">
+                  <button
+                    onClick={() => {
+                      setNotifications([]);
+                      setShowNotifications(false);
+                    }}
+                    className="text-xs text-slate-600 hover:text-primary font-semibold transition-colors"
+                  >
+                    Clear all notifications
+                  </button>
+                </div>
+              )}
+            </div>
+          )}
           <div className="flex items-center gap-3 pl-4 border-l border-slate-200">
             <div className="text-right hidden sm:block">
               <p className="text-sm font-bold">{profile?.full_name || 'Operator'}</p>
@@ -163,6 +349,12 @@ export default function Dashboard() {
           </div>
         </div>
       </header>
+
+      {/* System Status Banner */}
+      <GatewayStatusBanner />
+
+      {/* Quick Action Stats */}
+      <QuickStatsPanel />
 
       {/* KPI Section */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
@@ -205,15 +397,9 @@ export default function Dashboard() {
       <LiveVehicles
         searchQuery={searchQuery}
         onSelectVehicle={(vehicle) => console.log('Selected vehicle:', vehicle)}
-        onManualEntry={() => {
-          setManualAction('entry');
-          setShowManualEntryModal(true);
+        onManualHandling={() => {
+          if (onManualAction) onManualAction('manual_handling');
         }}
-        onManualExit={() => {
-          setManualAction('exit');
-          setShowManualEntryModal(true);
-        }}
-        onLostCard={() => setShowLostCardModal(true)}
       />
 
       {/* Live Zone Occupancy */}
@@ -256,7 +442,7 @@ export default function Dashboard() {
       </div>
 
       {/* Currently Occupied Slots Table */}
-      <div className="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
+      <div className="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden relative">
         <div className="p-6 border-b border-slate-100 flex items-center justify-between">
           <h2 className="text-xl font-bold">Currently Occupied Slots</h2>
           <button
@@ -287,54 +473,20 @@ export default function Dashboard() {
                         <LogIn size={14} /> Occupied
                       </span>
                     </td>
-                    <td className="px-6 py-4 text-right relative">
+                    <td className="px-6 py-4 text-right">
                       <button
                         onClick={(e) => {
-                          e.stopPropagation();
+                          const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
+                          setSlotMenuPosition({
+                            top: rect.bottom + window.scrollY,
+                            left: rect.left + window.scrollX
+                          });
                           setOpenSlotMenuId(openSlotMenuId === slot.slot_number ? null : slot.slot_number);
                         }}
                         className="text-slate-400 hover:text-primary transition-colors"
                       >
                         <MoreVertical size={18} />
                       </button>
-
-                      {/* Dropdown Menu for Slots */}
-                      {openSlotMenuId === slot.slot_number && (
-                        <div className="absolute right-0 mt-2 w-48 bg-white rounded-lg shadow-lg border border-slate-200 z-50 py-1">
-                          <button
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              alert(`Slot ${slot.slot_number} in Zone ${slot.zone}\nStatus: Occupied\nView details in system`);
-                              setOpenSlotMenuId(null);
-                            }}
-                            className="w-full text-left px-4 py-2 hover:bg-slate-50 flex items-center gap-2 text-sm text-slate-700"
-                          >
-                            <Eye size={16} /> View Details
-                          </button>
-                          <button
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              setManualAction('exit');
-                              setShowManualEntryModal(true);
-                              setOpenSlotMenuId(null);
-                            }}
-                            className="w-full text-left px-4 py-2 hover:bg-slate-50 flex items-center gap-2 text-sm text-orange-600"
-                          >
-                            <LogOut size={16} /> Force Exit
-                          </button>
-                          <div className="border-t border-slate-100 my-1"></div>
-                          <button
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              alert(`Payment Status for Slot ${slot.slot_number}:\nZone: ${slot.zone}\nAmount: Pending\nDuration: Calculate from parking_sessions`);
-                              setOpenSlotMenuId(null);
-                            }}
-                            className="w-full text-left px-4 py-2 hover:bg-slate-50 flex items-center gap-2 text-sm text-slate-600"
-                          >
-                            <DollarSign size={16} /> Check Payment
-                          </button>
-                        </div>
-                      )}
                     </td>
                   </tr>
                 ))
@@ -346,7 +498,63 @@ export default function Dashboard() {
         </div>
       </div>
 
+      {/* Floating Slot Action Menu - Outside Container */}
+      {openSlotMenuId && (
+        <div 
+          className="fixed w-48 bg-white rounded-lg shadow-xl border border-slate-200 z-50 py-1"
+          style={{
+            top: `${slotMenuPosition.top}px`,
+            left: `${slotMenuPosition.left}px`
+          }}
+          onClick={(e) => e.stopPropagation()}
+        >
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              alert(`View details for slot ${openSlotMenuId}`);
+              setOpenSlotMenuId(null);
+            }}
+            className="w-full text-left px-4 py-2 hover:bg-slate-50 flex items-center gap-2 text-sm text-slate-700 transition-colors"
+          >
+            <Eye size={16} /> View Details
+          </button>
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              if (onManualAction) onManualAction('manual_exit', { slot: openSlotMenuId });
+              setOpenSlotMenuId(null);
+            }}
+            className="w-full text-left px-4 py-2 hover:bg-slate-50 flex items-center gap-2 text-sm text-orange-600 transition-colors"
+          >
+            <LogOut size={16} /> Force Exit
+          </button>
+          <div className="border-t border-slate-100 my-1"></div>
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              alert(`Payment Status for Slot ${openSlotMenuId}`);
+              setOpenSlotMenuId(null);
+            }}
+            className="w-full text-left px-4 py-2 hover:bg-slate-50 flex items-center gap-2 text-sm text-slate-600 transition-colors"
+          >
+            <DollarSign size={16} /> Check Payment
+          </button>
+        </div>
+      )}
+
+      {/* Close menu backdrop - Outside Container */}
+      {openSlotMenuId && (
+        <div 
+          className="fixed inset-0 z-40"
+          onClick={() => setOpenSlotMenuId(null)}
+        />
+      )}
+
       {/* Modals */}
+      <TicketScannerModal
+        isOpen={showTicketScannerModal}
+        onClose={() => setShowTicketScannerModal(false)}
+      />
       <OverrideGateModal
         isOpen={showOverrideModal}
         onClose={() => setShowOverrideModal(false)}

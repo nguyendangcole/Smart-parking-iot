@@ -83,6 +83,10 @@ Hệ thống phân quyền dựa trên Email domain `@hcmut.edu.vn` và Metadata
 | **Parking Operator** | `@hcmut.edu.vn` | Operator View |
 | **System Admin** | `@hcmut.edu.vn` | Admin View |
 
+
+
+
+
 ### 🚀 Thiết lập Database
 
 1. Truy cập [Supabase Console](https://app.supabase.com/).

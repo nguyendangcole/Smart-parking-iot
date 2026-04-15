@@ -15,17 +15,13 @@ interface Vehicle {
 interface LiveVehiclesProps {
   searchQuery: string;
   onSelectVehicle?: (vehicle: Vehicle) => void;
-  onManualEntry?: () => void;
-  onManualExit?: () => void;
-  onLostCard?: () => void;
+  onManualHandling?: () => void;
 }
 
 export default function LiveVehicles({
   searchQuery,
   onSelectVehicle,
-  onManualEntry,
-  onManualExit,
-  onLostCard
+  onManualHandling
 }: LiveVehiclesProps) {  // Track which vehicle menu is open
   const [openMenuId, setOpenMenuId] = useState<string | null>(null);
   const [selectedVehicleForAction, setSelectedVehicleForAction] = useState<Vehicle | null>(null);
@@ -100,22 +96,10 @@ export default function LiveVehicles({
       {/* Action Buttons */}
       <div className="px-6 py-4 bg-slate-50 border-b border-slate-100 flex gap-2 flex-wrap">
         <button
-          onClick={onManualEntry}
-          className="px-4 py-2 bg-blue-500 text-white text-xs font-semibold rounded-lg hover:bg-blue-600 transition-colors"
+          onClick={onManualHandling}
+          className="px-4 py-2 bg-gradient-to-r from-blue-500 to-purple-600 text-white text-xs font-semibold rounded-lg hover:from-blue-600 hover:to-purple-700 transition-all shadow-md shadow-blue-500/20"
         >
-          + Manual Entry
-        </button>
-        <button
-          onClick={onManualExit}
-          className="px-4 py-2 bg-orange-500 text-white text-xs font-semibold rounded-lg hover:bg-orange-600 transition-colors"
-        >
-          + Manual Exit
-        </button>
-        <button
-          onClick={onLostCard}
-          className="px-4 py-2 bg-red-500 text-white text-xs font-semibold rounded-lg hover:bg-red-600 transition-colors"
-        >
-          Lost Card Handler
+          ⚙️ Manual Handling
         </button>
       </div>
 
