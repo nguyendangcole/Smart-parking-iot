@@ -184,7 +184,7 @@ export default function Dashboard({ onNavigate }: DashboardProps) {
       <header className="flex items-center justify-between">
         <div>
           <h2 className="text-3xl font-extrabold tracking-tight text-slate-900">
-            Good morning, {profile?.full_name?.split(' ')[0] || 'Member'}! 👋
+            {new Date().getHours() < 12 ? 'Good morning' : new Date().getHours() < 18 ? 'Good afternoon' : 'Good evening'}, {profile?.full_name?.split(' ')[0] || 'Member'}! 👋
           </h2>
           <p className="text-slate-500 font-medium">Here's what's happening with your parking today.</p>
         </div>

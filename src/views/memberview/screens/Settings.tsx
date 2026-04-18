@@ -14,8 +14,10 @@ import {
   ChevronRight,
   Settings as SettingsIcon
 } from 'lucide-react';
-import { motion } from 'framer-motion';
+import { motion, AnimatePresence } from 'framer-motion';
 import { useProfile } from '../../../shared/hooks/useProfile';
+import { supabase } from '../../../shared/supabase';
+import { CheckCircle, AlertCircle, Loader2 } from 'lucide-react';
 
 interface SettingsProps {
   onLogout: () => void;
@@ -26,6 +28,8 @@ export default function Settings({ onLogout }: SettingsProps) {
   const [isEditing, setIsEditing] = React.useState(false);
   const [formData, setFormData] = React.useState({ full_name: '', email: '' });
   const [profileImage, setProfileImage] = React.useState<string | null>(null);
+  const [isSaving, setIsSaving] = React.useState(false);
+  const [statusMessage, setStatusMessage] = React.useState<{ type: 'success' | 'error', text: string } | null>(null);
   const fileInputRef = React.useRef<HTMLInputElement>(null);
 
   // Password change state
@@ -54,9 +58,34 @@ export default function Settings({ onLogout }: SettingsProps) {
   };
 
   const handleSave = async () => {
-    // In a real app, call your API/updateProfile here
-    console.log('Saving profile data:', formData, 'Image:', profileImage ? 'Updated' : 'Unchanged');
-    setIsEditing(false);
+    if (!profile) return;
+    
+    setIsSaving(true);
+    setStatusMessage(null);
+
+    try {
+      const { error } = await supabase
+        .from('profiles')
+        .update({
+          full_name: formData.full_name,
+          email: formData.email,
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', profile.id);
+
+      if (error) throw error;
+
+      setStatusMessage({ type: 'success', text: 'Profile updated successfully!' });
+      setIsEditing(false);
+      
+      // Auto-hide success message after 3 seconds
+      setTimeout(() => setStatusMessage(null), 3000);
+    } catch (err: any) {
+      console.error('Error updating profile:', err);
+      setStatusMessage({ type: 'error', text: err.message || 'Failed to update profile.' });
+    } finally {
+      setIsSaving(false);
+    }
   };
 
   const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -177,14 +206,46 @@ export default function Settings({ onLogout }: SettingsProps) {
               <p className="text-lg font-semibold truncate text-xs">{profile?.id || 'N/A'}</p>
             </div>
           </div>
+          <AnimatePresence>
+            {statusMessage && (
+              <motion.div
+                initial={{ opacity: 0, y: -10 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -10 }}
+                className={`flex items-center gap-2 p-3 rounded-xl text-sm font-bold ${
+                  statusMessage.type === 'success' 
+                    ? 'bg-green-50 text-green-600 border border-green-100' 
+                    : 'bg-red-50 text-red-600 border border-red-100'
+                }`}
+              >
+                {statusMessage.type === 'success' ? <CheckCircle size={16} /> : <AlertCircle size={16} />}
+                {statusMessage.text}
+              </motion.div>
+            )}
+          </AnimatePresence>
+
           <div className="flex gap-3">
             <button 
               onClick={isEditing ? handleSave : startEditing}
-              className="px-6 py-2 bg-primary/10 text-primary font-bold rounded-lg hover:bg-primary/20 transition-all text-sm"
+              disabled={isSaving}
+              className={`px-6 py-2 flex items-center gap-2 font-bold rounded-lg transition-all text-sm ${
+                isSaving 
+                  ? 'bg-slate-100 text-slate-400 cursor-not-allowed' 
+                  : 'bg-primary/10 text-primary hover:bg-primary/20'
+              }`}
             >
-              {isEditing ? 'Save Profile Details' : 'Edit Profile Details'}
+              {isSaving ? (
+                <>
+                  <Loader2 size={16} className="animate-spin" />
+                  Saving...
+                </>
+              ) : isEditing ? (
+                'Save Profile Details'
+              ) : (
+                'Edit Profile Details'
+              )}
             </button>
-            {isEditing && (
+            {isEditing && !isSaving && (
               <button 
                 onClick={() => setIsEditing(false)}
                 className="px-6 py-2 bg-slate-100 text-slate-600 font-bold rounded-lg hover:bg-slate-200 transition-all text-sm"
