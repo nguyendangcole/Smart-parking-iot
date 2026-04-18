@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import {
   Car, Cpu, AlertTriangle, TrendingUp,
-  RefreshCw, Search, Bell, MoreVertical, LogIn, Eye, LogOut, DollarSign, QrCode
+  RefreshCw, Search, Bell, MoreVertical, LogIn, Eye, LogOut, DollarSign
 } from 'lucide-react';
 import { useProfile } from '../../../shared/hooks/useProfile';
 import { supabase } from '../../../shared/supabase';
@@ -11,7 +11,6 @@ import LostCardModal from './LostCardModal';
 import ManualEntryModal from './ManualEntryModal';
 import GateStatusPanel from './GateStatusPanel';
 import IncidentAlerts from './IncidentAlerts';
-import TicketScannerModal from './TicketScannerModal';
 import GatewayStatusBanner from './GatewayStatusBanner';
 import QuickStatsPanel from './QuickStatsPanel';
 
@@ -44,7 +43,6 @@ export default function Dashboard({
   const [showOverrideModal, setShowOverrideModal] = useState(false);
   const [showLostCardModal, setShowLostCardModal] = useState(false);
   const [showManualEntryModal, setShowManualEntryModal] = useState(false);
-  const [showTicketScannerModal, setShowTicketScannerModal] = useState(false);
   const [manualAction, setManualAction] = useState<'entry' | 'exit'>('entry');
   const [selectedGate, setSelectedGate] = useState<{ id: string; name: string } | null>(null);
   
@@ -233,13 +231,6 @@ export default function Dashboard({
           />
         </div>
         <div className="flex items-center gap-4">
-          <button
-            onClick={() => setShowTicketScannerModal(true)}
-            title="Scan visitor tickets"
-            className="px-4 py-2 rounded-lg bg-blue-500 text-white text-sm font-semibold hover:bg-blue-600 transition-colors flex items-center gap-2"
-          >
-            <QrCode size={16} /> Ticket Scanner
-          </button>
           <button className="relative p-2 rounded-full hover:bg-slate-100 text-slate-600 transition-colors"
             aria-label="notification-button"
             onClick={() => setShowNotifications(!showNotifications)}>
@@ -353,35 +344,7 @@ export default function Dashboard({
       {/* System Status Banner */}
       <GatewayStatusBanner />
 
-      {/* Quick Action Stats */}
-      <QuickStatsPanel />
-
-      {/* KPI Section */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-        {kpis.map((kpi, i) => (
-          <div key={i} className="bg-white p-6 rounded-2xl shadow-sm border border-slate-200 hover:shadow-md transition-shadow">
-            <div className="flex items-center justify-between mb-4">
-              <div className={`p-2 rounded-lg bg-${kpi.color}-50 text-${kpi.color}-600`}>
-                <kpi.icon size={20} />
-              </div>
-              <span className={`text-xs font-bold flex items-center gap-1 ${kpi.trend.includes('%') ? 'text-emerald-500' : 'text-slate-500'}`}>
-                {kpi.trend.includes('%') && <TrendingUp size={12} />} {kpi.trend}
-              </span>
-            </div>
-            <p className="text-slate-500 text-sm font-medium">{kpi.title}</p>
-            <h3 className="text-2xl font-bold mt-1">{kpi.value}</h3>
-            {kpi.progress !== undefined ? (
-              <div className="w-full bg-slate-100 h-2 rounded-full mt-4 overflow-hidden">
-                <div className="bg-primary h-full rounded-full" style={{ width: `${kpi.progress}%` }}></div>
-              </div>
-            ) : (
-              <p className="text-xs text-slate-400 mt-4">{kpi.sub}</p>
-            )}
-          </div>
-        ))}
-      </div>
-
-      {/* Gate Status & Incidents Row */}
+      {/* System & Gate Status Group */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         <GateStatusPanel
           onRefresh={fetchData}
@@ -393,13 +356,13 @@ export default function Dashboard({
         <IncidentAlerts onRefresh={fetchData} />
       </div>
 
+      {/* Quick Action Stats */}
+      <QuickStatsPanel />
+
       {/* Live Vehicles */}
       <LiveVehicles
         searchQuery={searchQuery}
         onSelectVehicle={(vehicle) => console.log('Selected vehicle:', vehicle)}
-        onManualHandling={() => {
-          if (onManualAction) onManualAction('manual_handling');
-        }}
       />
 
       {/* Live Zone Occupancy */}
@@ -551,10 +514,6 @@ export default function Dashboard({
       )}
 
       {/* Modals */}
-      <TicketScannerModal
-        isOpen={showTicketScannerModal}
-        onClose={() => setShowTicketScannerModal(false)}
-      />
       <OverrideGateModal
         isOpen={showOverrideModal}
         onClose={() => setShowOverrideModal(false)}

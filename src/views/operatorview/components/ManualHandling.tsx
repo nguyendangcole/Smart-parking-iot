@@ -43,9 +43,8 @@ export default function ManualHandling({
   const [reason, setReason] = useState('Lost RFID Card');
   const [supervisorCode, setSupervisorCode] = useState('');
 
-  // Modal States
-  const [showManualHandlingModal, setShowManualHandlingModal] = useState(false);
-  const [activeModalTab, setActiveModalTab] = useState<'lost_card' | 'manual_entry' | 'manual_exit' | 'override_gate'>('lost_card');
+  // Tab States
+  const [activeTab, setActiveTab] = useState<'lost_card' | 'manual_entry' | 'manual_exit' | 'override_gate'>('lost_card');
   const [showHelpDocs, setShowHelpDocs] = useState(false);
   const [manualActionType, setManualActionType] = useState<'entry' | 'exit'>('entry');
 
@@ -71,31 +70,30 @@ export default function ManualHandling({
   // Handle pending actions from Dashboard
   useEffect(() => {
     if (pendingAction?.type) {
-      setShowManualHandlingModal(true);
       switch (pendingAction.type) {
         case 'lost_card':
-          setActiveModalTab('lost_card');
+          setActiveTab('lost_card');
           break;
         case 'manual_entry':
-          setActiveModalTab('manual_entry');
+          setActiveTab('manual_entry');
           setManualActionType('entry');
           break;
         case 'manual_exit':
-          setActiveModalTab('manual_exit');
+          setActiveTab('manual_exit');
           setManualActionType('exit');
           if (pendingAction.data?.slot) {
             setPlate(`Slot: ${pendingAction.data.slot}`);
           }
           break;
         case 'override_gate':
-          setActiveModalTab('override_gate');
+          setActiveTab('override_gate');
           break;
         case 'manual_handling':
-          // Open modal with Lost Card tab as default
-          setActiveModalTab('lost_card');
+          // Show Lost Card tab as default
+          setActiveTab('lost_card');
           break;
       }
-      // Clear the pending action after opening the modal
+      // Clear the pending action after processing
       if (clearPendingAction) clearPendingAction();
     }
   }, [pendingAction, clearPendingAction]);
@@ -138,7 +136,23 @@ export default function ManualHandling({
       alert('Please enter a vehicle license plate');
       return;
     }
-    setShowManualEntryModal(true);
+    // Switch to manual exit tab
+    setActiveTab('manual_exit');
+  };
+
+  const handleTabSubmit = () => {
+    if (!supervisorCode.trim()) {
+      alert('Please enter supervisor override code');
+      return;
+    }
+    
+    alert(`✓ ${activeTab.replace('_', ' ').toUpperCase()} operation submitted successfully`);
+    
+    // Reset form
+    setPlate('');
+    setStudentId('');
+    setSupervisorCode('');
+    setReason('Lost RFID Card');
   };
 
   const handleReleaseGate = (vehicle: string, id: string) => {
@@ -285,281 +299,6 @@ export default function ManualHandling({
       <LostCardModal isOpen={false} onClose={() => {}} />
       <ManualEntryModal isOpen={false} onClose={() => {}} defaultAction={manualActionType} />
       <OverrideGateModal isOpen={false} onClose={() => {}} />
-
-      {/* Tabbed Manual Handling Modal */}
-      {showManualHandlingModal && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-2xl shadow-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto animate-in fade-in zoom-in-95 flex flex-col">
-            {/* Modal Header */}
-            <div className="sticky top-0 px-6 py-4 bg-gradient-to-r from-blue-500 to-blue-600 text-white flex items-center justify-between">
-              <div className="flex items-center gap-3">
-                <Zap size={24} />
-                <h2 className="text-xl font-bold">Manual Handling Operations</h2>
-              </div>
-              <button
-                onClick={() => setShowManualHandlingModal(false)}
-                className="p-1 hover:bg-blue-700 rounded-lg transition-colors"
-              >
-                <X size={20} />
-              </button>
-            </div>
-
-            {/* Tabs */}
-            <div className="flex border-b border-slate-200 bg-slate-50 overflow-x-auto">
-              <button
-                onClick={() => setActiveModalTab('lost_card')}
-                className={`px-4 py-3 font-semibold text-sm whitespace-nowrap transition-all ${
-                  activeModalTab === 'lost_card'
-                    ? 'text-blue-600 border-b-2 border-blue-600 bg-white'
-                    : 'text-slate-600 hover:text-slate-800'
-                }`}
-              >
-                <CreditCard className="inline mr-2" size={16} /> Lost Card
-              </button>
-              <button
-                onClick={() => setActiveModalTab('manual_entry')}
-                className={`px-4 py-3 font-semibold text-sm whitespace-nowrap transition-all ${
-                  activeModalTab === 'manual_entry'
-                    ? 'text-blue-600 border-b-2 border-blue-600 bg-white'
-                    : 'text-slate-600 hover:text-slate-800'
-                }`}
-              >
-                <LogIn className="inline mr-2" size={16} /> Manual Entry
-              </button>
-              <button
-                onClick={() => setActiveModalTab('manual_exit')}
-                className={`px-4 py-3 font-semibold text-sm whitespace-nowrap transition-all ${
-                  activeModalTab === 'manual_exit'
-                    ? 'text-blue-600 border-b-2 border-blue-600 bg-white'
-                    : 'text-slate-600 hover:text-slate-800'
-                }`}
-              >
-                <LogOut className="inline mr-2" size={16} /> Manual Exit
-              </button>
-              <button
-                onClick={() => setActiveModalTab('override_gate')}
-                className={`px-4 py-3 font-semibold text-sm whitespace-nowrap transition-all ${
-                  activeModalTab === 'override_gate'
-                    ? 'text-blue-600 border-b-2 border-blue-600 bg-white'
-                    : 'text-slate-600 hover:text-slate-800'
-                }`}
-              >
-                <Zap className="inline mr-2" size={16} /> Override Gate
-              </button>
-            </div>
-
-            {/* Tab Content */}
-            <div className="flex-1 overflow-y-auto p-6">
-              {/* Lost Card Tab */}
-              {activeModalTab === 'lost_card' && (
-                <div className="space-y-4">
-                  <div>
-                    <label className="block text-sm font-semibold text-slate-800 mb-2">Vehicle License Plate</label>
-                    <input
-                      type="text"
-                      value={plate}
-                      onChange={(e) => setPlate(e.target.value)}
-                      placeholder="e.g., ABC-1234"
-                      className="w-full px-4 py-2 border border-slate-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-sm font-semibold text-slate-800 mb-2">Student ID</label>
-                    <input
-                      type="text"
-                      value={studentId}
-                      onChange={(e) => setStudentId(e.target.value)}
-                      placeholder="e.g., 2012345"
-                      className="w-full px-4 py-2 border border-slate-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-sm font-semibold text-slate-800 mb-2">Reason</label>
-                    <select
-                      value={reason}
-                      onChange={(e) => setReason(e.target.value)}
-                      className="w-full px-4 py-2 border border-slate-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none"
-                    >
-                      <option>Lost RFID Card</option>
-                      <option>Damaged Card</option>
-                      <option>Expired Card</option>
-                      <option>Other</option>
-                    </select>
-                  </div>
-                  <div>
-                    <label className="block text-sm font-semibold text-slate-800 mb-2">Supervisor Override Code</label>
-                    <input
-                      type="password"
-                      value={supervisorCode}
-                      onChange={(e) => setSupervisorCode(e.target.value)}
-                      placeholder="Required for authorization"
-                      className="w-full px-4 py-2 border border-slate-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none"
-                    />
-                  </div>
-                </div>
-              )}
-
-              {/* Manual Entry Tab */}
-              {activeModalTab === 'manual_entry' && (
-                <div className="space-y-4">
-                  <div>
-                    <label className="block text-sm font-semibold text-slate-800 mb-2">Vehicle License Plate</label>
-                    <input
-                      type="text"
-                      placeholder="e.g., ABC-1234"
-                      className="w-full px-4 py-2 border border-slate-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-sm font-semibold text-slate-800 mb-2">Entry Gate</label>
-                    <select className="w-full px-4 py-2 border border-slate-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none">
-                      <option>Gate A1 (Main Entrance)</option>
-                      <option>Gate A2 (Secondary)</option>
-                      <option>Gate B1 (Staff)</option>
-                    </select>
-                  </div>
-                  <div>
-                    <label className="block text-sm font-semibold text-slate-800 mb-2">Reason for Manual Entry</label>
-                    <textarea
-                      placeholder="Explain why manual entry is needed..."
-                      className="w-full px-4 py-2 border border-slate-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none h-24"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-sm font-semibold text-slate-800 mb-2">Supervisor Override Code</label>
-                    <input
-                      type="password"
-                      placeholder="Required for authorization"
-                      className="w-full px-4 py-2 border border-slate-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none"
-                    />
-                  </div>
-                </div>
-              )}
-
-              {/* Manual Exit Tab */}
-              {activeModalTab === 'manual_exit' && (
-                <div className="space-y-4">
-                  <div>
-                    <label className="block text-sm font-semibold text-slate-800 mb-2">Vehicle License Plate</label>
-                    <input
-                      type="text"
-                      value={plate}
-                      onChange={(e) => setPlate(e.target.value)}
-                      placeholder="e.g., ABC-1234"
-                      className="w-full px-4 py-2 border border-slate-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-sm font-semibold text-slate-800 mb-2">Exit Gate</label>
-                    <select className="w-full px-4 py-2 border border-slate-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none">
-                      <option>Gate B2 (Main Exit)</option>
-                      <option>Gate B3 (Secondary Exit)</option>
-                      <option>Gate A1 (Entrance - Two-way)</option>
-                    </select>
-                  </div>
-                  <div>
-                    <label className="block text-sm font-semibold text-slate-800 mb-2">Reason for Manual Exit</label>
-                    <select className="w-full px-4 py-2 border border-slate-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none">
-                      <option>Card Reader Malfunction</option>
-                      <option>Lost Card</option>
-                      <option>System Error</option>
-                      <option>Other</option>
-                    </select>
-                  </div>
-                  <div>
-                    <label className="block text-sm font-semibold text-slate-800 mb-2">Supervisor Override Code</label>
-                    <input
-                      type="password"
-                      placeholder="Required for authorization"
-                      className="w-full px-4 py-2 border border-slate-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none"
-                    />
-                  </div>
-                </div>
-              )}
-
-              {/* Override Gate Tab */}
-              {activeModalTab === 'override_gate' && (
-                <div className="space-y-4">
-                  <div className="bg-red-50 border border-red-200 rounded-lg p-4 mb-4">
-                    <p className="text-sm text-red-800 font-semibold">⚠️ Use only in emergency situations</p>
-                  </div>
-                  <div>
-                    <label className="block text-sm font-semibold text-slate-800 mb-2">Gate to Override</label>
-                    <select className="w-full px-4 py-2 border border-slate-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none">
-                      <option>Gate A1 (Main Entrance)</option>
-                      <option>Gate A2 (Secondary)</option>
-                      <option>Gate B1 (Staff)</option>
-                      <option>Gate B2 (Main Exit)</option>
-                      <option>All Gates</option>
-                    </select>
-                  </div>
-                  <div>
-                    <label className="block text-sm font-semibold text-slate-800 mb-2">Override Type</label>
-                    <select className="w-full px-4 py-2 border border-slate-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none">
-                      <option>Emergency Open</option>
-                      <option>Force Close</option>
-                      <option>Manual Control</option>
-                    </select>
-                  </div>
-                  <div>
-                    <label className="block text-sm font-semibold text-slate-800 mb-2">Emergency Reason</label>
-                    <textarea
-                      placeholder="Describe the emergency situation..."
-                      className="w-full px-4 py-2 border border-slate-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none h-24"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-sm font-semibold text-slate-800 mb-2">Supervisor Override Code</label>
-                    <input
-                      type="password"
-                      placeholder="Required for authorization"
-                      className="w-full px-4 py-2 border border-slate-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none"
-                    />
-                  </div>
-                </div>
-              )}
-            </div>
-
-            {/* Modal Footer */}
-            <div className="sticky bottom-0 px-6 py-4 bg-slate-50 border-t border-slate-200 flex gap-3 justify-between">
-              <button
-                onClick={() => {
-                  setShowManualHandlingModal(false);
-                }}
-                className="px-4 py-2 rounded-lg border border-red-200 text-red-600 font-semibold hover:bg-red-50 transition-colors flex items-center gap-2"
-              >
-                ✕ Close
-              </button>
-              <div className="flex gap-3">
-                <button
-                  onClick={() => {
-                    alert(`✓ ${activeModalTab.replace('_', ' ').toUpperCase()} operation submitted successfully`);
-                    // Reset form and close
-                    setPlate('');
-                    setStudentId('');
-                    setSupervisorCode('');
-                    setActiveModalTab('lost_card');
-                    setShowManualHandlingModal(false);
-                  }}
-                  className="px-4 py-2 rounded-lg bg-blue-600 text-white font-semibold hover:bg-blue-700 transition-colors flex items-center gap-2"
-                >
-                  ✓ Submit & Close
-                </button>
-                <button
-                  onClick={() => {
-                    alert(`✓ ${activeModalTab.replace('_', ' ').toUpperCase()} operation submitted successfully`);
-                    setShowManualHandlingModal(false);
-                    if (onReturnToDashboard) onReturnToDashboard();
-                  }}
-                  className="px-4 py-2 rounded-lg bg-emerald-600 text-white font-semibold hover:bg-emerald-700 transition-colors flex items-center gap-2"
-                >
-                  ✓ Submit & Return
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
 
       {/* Header */}
       <header className="flex justify-between items-end">
@@ -772,6 +511,267 @@ export default function ManualHandling({
           </section>
         </div>
       </div>
+
+      {/* Manual Handling Operations Tabs */}
+      <section className="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
+        {/* Tabs Header */}
+        <div className="flex border-b border-slate-200 bg-slate-50 overflow-x-auto">
+          <button
+            onClick={() => setActiveTab('lost_card')}
+            className={`px-6 py-4 font-semibold text-sm whitespace-nowrap transition-all ${
+              activeTab === 'lost_card'
+                ? 'text-blue-600 border-b-2 border-blue-600 bg-white'
+                : 'text-slate-600 hover:text-slate-800'
+            }`}
+          >
+            <CreditCard className="inline mr-2" size={18} /> Lost Card
+          </button>
+          <button
+            onClick={() => setActiveTab('manual_entry')}
+            className={`px-6 py-4 font-semibold text-sm whitespace-nowrap transition-all ${
+              activeTab === 'manual_entry'
+                ? 'text-blue-600 border-b-2 border-blue-600 bg-white'
+                : 'text-slate-600 hover:text-slate-800'
+            }`}
+          >
+            <LogIn className="inline mr-2" size={18} /> Manual Entry
+          </button>
+          <button
+            onClick={() => setActiveTab('manual_exit')}
+            className={`px-6 py-4 font-semibold text-sm whitespace-nowrap transition-all ${
+              activeTab === 'manual_exit'
+                ? 'text-blue-600 border-b-2 border-blue-600 bg-white'
+                : 'text-slate-600 hover:text-slate-800'
+            }`}
+          >
+            <LogOut className="inline mr-2" size={18} /> Manual Exit
+          </button>
+          <button
+            onClick={() => setActiveTab('override_gate')}
+            className={`px-6 py-4 font-semibold text-sm whitespace-nowrap transition-all ${
+              activeTab === 'override_gate'
+                ? 'text-blue-600 border-b-2 border-blue-600 bg-white'
+                : 'text-slate-600 hover:text-slate-800'
+            }`}
+          >
+            <Zap className="inline mr-2" size={18} /> Override Gate
+          </button>
+        </div>
+
+        {/* Tab Content */}
+        <div className="p-8">
+          {/* Lost Card Tab */}
+          {activeTab === 'lost_card' && (
+            <div className="space-y-6">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div>
+                  <label className="block text-sm font-semibold text-slate-800 mb-2">Vehicle License Plate</label>
+                  <input
+                    type="text"
+                    value={plate}
+                    onChange={(e) => setPlate(e.target.value)}
+                    placeholder="e.g., ABC-1234"
+                    className="w-full px-4 py-3 border border-slate-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-semibold text-slate-800 mb-2">Student ID</label>
+                  <input
+                    type="text"
+                    value={studentId}
+                    onChange={(e) => setStudentId(e.target.value)}
+                    placeholder="e.g., 2012345"
+                    className="w-full px-4 py-3 border border-slate-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none"
+                  />
+                </div>
+              </div>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div>
+                  <label className="block text-sm font-semibold text-slate-800 mb-2">Reason</label>
+                  <select
+                    value={reason}
+                    onChange={(e) => setReason(e.target.value)}
+                    className="w-full px-4 py-3 border border-slate-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none"
+                  >
+                    <option>Lost RFID Card</option>
+                    <option>Damaged Card</option>
+                    <option>Expired Card</option>
+                    <option>Other</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-sm font-semibold text-slate-800 mb-2">Supervisor Override Code</label>
+                  <input
+                    type="password"
+                    value={supervisorCode}
+                    onChange={(e) => setSupervisorCode(e.target.value)}
+                    placeholder="Required for authorization"
+                    className="w-full px-4 py-3 border border-slate-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none"
+                  />
+                </div>
+              </div>
+              <div className="flex gap-3 justify-end pt-4 border-t border-slate-200">
+                <button
+                  onClick={handleTabSubmit}
+                  className="px-6 py-3 rounded-lg bg-blue-600 text-white font-semibold hover:bg-blue-700 transition-colors"
+                >
+                  Submit
+                </button>
+              </div>
+            </div>
+          )}
+
+          {/* Manual Entry Tab */}
+          {activeTab === 'manual_entry' && (
+            <div className="space-y-6">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div>
+                  <label className="block text-sm font-semibold text-slate-800 mb-2">Vehicle License Plate</label>
+                  <input
+                    type="text"
+                    placeholder="e.g., ABC-1234"
+                    className="w-full px-4 py-3 border border-slate-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-semibold text-slate-800 mb-2">Entry Gate</label>
+                  <select className="w-full px-4 py-3 border border-slate-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none">
+                    <option>Gate A1 (Main Entrance)</option>
+                    <option>Gate A2 (Secondary)</option>
+                    <option>Gate B1 (Staff)</option>
+                  </select>
+                </div>
+              </div>
+              <div>
+                <label className="block text-sm font-semibold text-slate-800 mb-2">Reason for Manual Entry</label>
+                <textarea
+                  placeholder="Explain why manual entry is needed..."
+                  className="w-full px-4 py-3 border border-slate-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none h-24"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-semibold text-slate-800 mb-2">Supervisor Override Code</label>
+                <input
+                  type="password"
+                  placeholder="Required for authorization"
+                  className="w-full px-4 py-3 border border-slate-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none"
+                />
+              </div>
+              <div className="flex gap-3 justify-end pt-4 border-t border-slate-200">
+                <button
+                  onClick={handleTabSubmit}
+                  className="px-6 py-3 rounded-lg bg-blue-600 text-white font-semibold hover:bg-blue-700 transition-colors"
+                >
+                  Submit
+                </button>
+              </div>
+            </div>
+          )}
+
+          {/* Manual Exit Tab */}
+          {activeTab === 'manual_exit' && (
+            <div className="space-y-6">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div>
+                  <label className="block text-sm font-semibold text-slate-800 mb-2">Vehicle License Plate</label>
+                  <input
+                    type="text"
+                    value={plate}
+                    onChange={(e) => setPlate(e.target.value)}
+                    placeholder="e.g., ABC-1234"
+                    className="w-full px-4 py-3 border border-slate-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-semibold text-slate-800 mb-2">Exit Gate</label>
+                  <select className="w-full px-4 py-3 border border-slate-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none">
+                    <option>Gate B2 (Main Exit)</option>
+                    <option>Gate B3 (Secondary Exit)</option>
+                    <option>Gate A1 (Entrance - Two-way)</option>
+                  </select>
+                </div>
+              </div>
+              <div>
+                <label className="block text-sm font-semibold text-slate-800 mb-2">Reason for Manual Exit</label>
+                <select className="w-full px-4 py-3 border border-slate-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none">
+                  <option>Card Reader Malfunction</option>
+                  <option>Lost Card</option>
+                  <option>System Error</option>
+                  <option>Other</option>
+                </select>
+              </div>
+              <div>
+                <label className="block text-sm font-semibold text-slate-800 mb-2">Supervisor Override Code</label>
+                <input
+                  type="password"
+                  placeholder="Required for authorization"
+                  className="w-full px-4 py-3 border border-slate-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none"
+                />
+              </div>
+              <div className="flex gap-3 justify-end pt-4 border-t border-slate-200">
+                <button
+                  onClick={handleTabSubmit}
+                  className="px-6 py-3 rounded-lg bg-blue-600 text-white font-semibold hover:bg-blue-700 transition-colors"
+                >
+                  Submit
+                </button>
+              </div>
+            </div>
+          )}
+
+          {/* Override Gate Tab */}
+          {activeTab === 'override_gate' && (
+            <div className="space-y-6">
+              <div className="bg-red-50 border border-red-200 rounded-lg p-4 mb-4">
+                <p className="text-sm text-red-800 font-semibold">⚠️ Use only in emergency situations</p>
+              </div>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div>
+                  <label className="block text-sm font-semibold text-slate-800 mb-2">Gate to Override</label>
+                  <select className="w-full px-4 py-3 border border-slate-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none">
+                    <option>Gate A1 (Main Entrance)</option>
+                    <option>Gate A2 (Secondary)</option>
+                    <option>Gate B1 (Staff)</option>
+                    <option>Gate B2 (Main Exit)</option>
+                    <option>All Gates</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-sm font-semibold text-slate-800 mb-2">Override Type</label>
+                  <select className="w-full px-4 py-3 border border-slate-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none">
+                    <option>Emergency Open</option>
+                    <option>Force Close</option>
+                    <option>Manual Control</option>
+                  </select>
+                </div>
+              </div>
+              <div>
+                <label className="block text-sm font-semibold text-slate-800 mb-2">Emergency Reason</label>
+                <textarea
+                  placeholder="Describe the emergency situation..."
+                  className="w-full px-4 py-3 border border-slate-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none h-24"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-semibold text-slate-800 mb-2">Supervisor Override Code</label>
+                <input
+                  type="password"
+                  placeholder="Required for authorization"
+                  className="w-full px-4 py-3 border border-slate-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none"
+                />
+              </div>
+              <div className="flex gap-3 justify-end pt-4 border-t border-slate-200">
+                <button
+                  onClick={handleTabSubmit}
+                  className="px-6 py-3 rounded-lg bg-blue-600 text-white font-semibold hover:bg-blue-700 transition-colors"
+                >
+                  Submit
+                </button>
+              </div>
+            </div>
+          )}
+        </div>
+      </section>
 
       {/* Footer Summary Stats */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mt-8 pb-8">

@@ -15,13 +15,11 @@ interface Vehicle {
 interface LiveVehiclesProps {
   searchQuery: string;
   onSelectVehicle?: (vehicle: Vehicle) => void;
-  onManualHandling?: () => void;
 }
 
 export default function LiveVehicles({
   searchQuery,
-  onSelectVehicle,
-  onManualHandling
+  onSelectVehicle
 }: LiveVehiclesProps) {  // Track which vehicle menu is open
   const [openMenuId, setOpenMenuId] = useState<string | null>(null);
   const [selectedVehicleForAction, setSelectedVehicleForAction] = useState<Vehicle | null>(null);
@@ -91,16 +89,6 @@ export default function LiveVehicles({
             ? `Found ${filteredVehicles.length} vehicle(s) matching "${searchQuery}"`
             : 'All active parking sessions. Search by plate (AAA-0001), ticket (TK-001234), or card ID (CARD-567)'}
         </p>
-      </div>
-
-      {/* Action Buttons */}
-      <div className="px-6 py-4 bg-slate-50 border-b border-slate-100 flex gap-2 flex-wrap">
-        <button
-          onClick={onManualHandling}
-          className="px-4 py-2 bg-gradient-to-r from-blue-500 to-purple-600 text-white text-xs font-semibold rounded-lg hover:from-blue-600 hover:to-purple-700 transition-all shadow-md shadow-blue-500/20"
-        >
-          ⚙️ Manual Handling
-        </button>
       </div>
 
       {/* Table */}
