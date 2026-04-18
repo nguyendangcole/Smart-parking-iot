@@ -12,13 +12,21 @@ import { useProfile } from '../../shared/hooks/useProfile';
 type Tab = 'dashboard' | 'pricing' | 'users' | 'audit' | 'iot' | 'signage' | 'settings';
 
 export default function AdminApp() {
-  const { profile } = useProfile();
+  const { profile, loading } = useProfile();
   const [activeTab, setActiveTab] = useState<Tab>('dashboard');
 
-  // App.tsx ensures this view only renders for Admin profile,
-  // but let's double check for safety
+  // Chờ load xong profile để tránh hiện Access Denied nhầm
+  if (loading) return null;
+
   if (!profile || profile.role !== 'admin') {
-    return <div className="p-10">Access Denied</div>;
+    return (
+      <div className="h-screen flex items-center justify-center bg-slate-50">
+        <div className="text-center p-10 bg-white rounded-2xl shadow-xl border border-red-100">
+          <h2 className="text-red-600 font-bold text-xl mb-2">Access Denied</h2>
+          <p className="text-slate-500">You do not have permission to view this page.</p>
+        </div>
+      </div>
+    );
   }
 
   const renderContent = () => {

@@ -143,10 +143,12 @@ export default function Login({ onLogin }: LoginProps) {
                     <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
                       <Mail size={18} className="text-slate-400 group-focus-within:text-primary transition-colors" />
                     </div>
-                    <input
-                      type="email"
-                      required
-                      placeholder="email@hcmut.edu.vn"
+                      <input
+                        id="hcmut-email"
+                        name="email"
+                        type="email"
+                        required
+                        placeholder="email@hcmut.edu.vn"
                       value={email}
                       onChange={(e) => setEmail(e.target.value)}
                       className="w-full pl-11 pr-4 py-3.5 bg-slate-50 border border-slate-200 rounded-xl outline-none focus:ring-2 focus:ring-primary/10 focus:border-primary transition-all text-slate-800"
@@ -160,10 +162,12 @@ export default function Login({ onLogin }: LoginProps) {
                     <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
                       <Lock size={18} className="text-slate-400 group-focus-within:text-primary transition-colors" />
                     </div>
-                    <input
-                      type={showPassword ? "text" : "password"}
-                      required
-                      placeholder="Enter password"
+                      <input
+                        id="hcmut-password"
+                        name="password"
+                        type={showPassword ? "text" : "password"}
+                        required
+                        placeholder="Enter password"
                       value={password}
                       onChange={(e) => setPassword(e.target.value)}
                       className="w-full pl-11 pr-12 py-3.5 bg-slate-50 border border-slate-200 rounded-xl outline-none focus:ring-2 focus:ring-primary/10 focus:border-primary transition-all text-slate-800"

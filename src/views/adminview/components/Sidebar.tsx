@@ -68,7 +68,9 @@ export const Sidebar: React.FC<SidebarProps> = ({ activeTab, setActiveTab }) => 
           <div className="w-9 h-9 rounded-full bg-primary/10 flex items-center justify-center text-primary overflow-hidden shrink-0">
             {profile?.full_name ? (
               <span className="font-bold text-xs tracking-tighter">
-                {profile.full_name.split(' ').map(n => n[0]).join('').toUpperCase()}
+                {profile?.full_name 
+                  ? profile.full_name.trim().split(/\s+/).map(n => n?.[0] || '').join('').toUpperCase().slice(0, 2)
+                  : 'AD'}
               </span>
             ) : (
               <span className="material-symbols-outlined text-xl">person</span>

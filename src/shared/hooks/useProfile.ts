@@ -1,92 +1,83 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import { supabase } from '../supabase';
 
 export interface Profile {
-    id: string;
-    email: string;
-    full_name: string | null;
-    role: string;
+  id: string;
+  email: string;
+  full_name: string | null;
+  role: string;
 }
 
 export function useProfile() {
-    const [profile, setProfile] = useState<Profile | null>(null);
-    const [loading, setLoading] = useState(true);
-    const [fetchError, setFetchError] = useState<string | null>(null);
+  const [profile, setProfile] = useState<Profile | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [fetchError, setFetchError] = useState<string | null>(null);
+  const fetchedId = useRef<string | null>(null);
 
-    useEffect(() => {
-        let isMounted = true;
+  useEffect(() => {
+    let isMounted = true;
 
-        async function fetchProfileData(userId: string) {
-            try {
-                const { data, error } = await supabase
-                    .from('profiles')
-                    .select('*')
-                    .eq('id', userId)
-                    .single();
+    async function loadProfile(userId: string) {
+      if (fetchedId.current === userId) return;
+      fetchedId.current = userId;
 
-                if (error) {
-                    console.error('[Profile] Database fetch error:', error);
-                } else if (isMounted) {
-                    console.log('[Profile] Data loaded for:', data.full_name);
-                    setProfile(data);
-                    setFetchError(null);
-                }
-            } catch (err: any) {
-                console.error('[Profile] Unexpected fetch error:', err);
-                if (isMounted) setFetchError(err.message || 'Network disconnected.');
-            } finally {
-                if (isMounted) setLoading(false);
-            }
+      try {
+        const { data, error } = await supabase
+          .from('profiles')
+          .select('*')
+          .eq('id', userId)
+          .single();
+
+        if (isMounted) {
+          if (error) {
+            setProfile(null);
+            setFetchError(error.message);
+          } else {
+            setProfile(data);
+            setFetchError(null);
+          }
         }
+      } catch (err: any) {
+        if (isMounted) setFetchError(err.message);
+      } finally {
+        if (isMounted) setLoading(false);
+      }
+    }
 
-        async function initAuth() {
-            try {
-                console.log('[Profile] Checking session status...');
-                const { data: { session }, error: sessionError } = await supabase.auth.getSession();
-
-                if (sessionError) throw sessionError;
-
-                if (session?.user) {
-                    await fetchProfileData(session.user.id);
-                } else {
-                    if (isMounted) {
-                        setProfile(null);
-                        setLoading(false);
-                    }
-                }
-            } catch (err: any) {
-                console.error('[Profile] Session init error:', err);
-                if (isMounted) {
-                    setLoading(false);
-                }
-            }
+    // Khởi tạo
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      if (isMounted) {
+        if (session?.user) {
+          loadProfile(session.user.id);
+        } else {
+          setLoading(false);
         }
+      }
+    });
 
-        initAuth();
+    // Theo dõi auth
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+      if (isMounted) {
+        if (event === 'SIGNED_IN' && session?.user) {
+          loadProfile(session.user.id);
+        } else if (event === 'SIGNED_OUT') {
+          setProfile(null);
+          setLoading(false);
+          fetchedId.current = null;
+        }
+      }
+    });
 
-        const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
-            console.log('[Profile] Auth event detected:', event);
-            if (session?.user) {
-                await fetchProfileData(session.user.id);
-            } else if (event === 'SIGNED_OUT') {
-                if (isMounted) {
-                    setProfile(null);
-                    setFetchError(null);
-                    setLoading(false);
-                }
-            }
-        });
-
-        return () => {
-            isMounted = false;
-            subscription.unsubscribe();
-        };
-    }, []);
-
-    const logout = async () => {
-        await supabase.auth.signOut();
-        window.location.href = '/';
+    return () => {
+      isMounted = false;
+      subscription.unsubscribe();
     };
+  }, []); // Cố định 100%, không bao giờ thay đổi thứ tự hook
 
-    return { profile, loading, logout, fetchError };
+  const logout = async () => {
+    await supabase.auth.signOut();
+    window.location.href = '/';
+  };
+
+  return { profile, loading, logout, fetchError };
 }
