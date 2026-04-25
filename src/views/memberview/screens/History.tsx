@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import {
   Search,
   Calendar,
@@ -9,11 +9,13 @@ import {
   Loader2,
   Clock,
   MapPin,
-  CreditCard
+  CreditCard,
+  X
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { supabase } from '../../../shared/supabase';
 import { useProfile } from '../../../shared/hooks/useProfile';
+import { generateReceiptPDF } from '../../../shared/utils/receipt';
 
 interface ParkingSession {
   id: string;
@@ -25,6 +27,41 @@ interface ParkingSession {
   status: string;
 }
 
+// Canonical status keys used by the UI
+type StatusKey = 'Completed' | 'Ongoing' | 'Cancelled' | 'Unknown';
+type StatusFilter = 'All' | 'Completed' | 'Ongoing' | 'Cancelled';
+
+// Maps each canonical status to every variant that might appear in the DB.
+// The parking_sessions table is written to by several flows (member schema,
+// visitor flow, older master schema, legacy mocks) so raw status values come
+// in mixed case and with different aliases. We normalize on both read
+// (display) and write (query) paths so the filter actually matches reality.
+const STATUS_VARIANTS: Record<Exclude<StatusFilter, 'All'>, string[]> = {
+  Completed: ['Completed', 'completed', 'COMPLETED', 'Paid', 'paid', 'PAID'],
+  Ongoing: [
+    'Ongoing', 'ongoing', 'ONGOING',
+    'Active', 'active', 'ACTIVE',
+    'In Progress', 'in progress',
+    'unpaid', 'Unpaid', 'UNPAID'
+  ],
+  Cancelled: ['Cancelled', 'cancelled', 'CANCELLED', 'Canceled', 'canceled']
+};
+
+const normalizeStatus = (raw?: string | null): StatusKey => {
+  if (!raw) return 'Unknown';
+  const v = String(raw).toLowerCase().trim();
+  if (['completed', 'paid'].includes(v)) return 'Completed';
+  if (['ongoing', 'active', 'in progress', 'unpaid'].includes(v)) return 'Ongoing';
+  if (['cancelled', 'canceled'].includes(v)) return 'Cancelled';
+  return 'Unknown';
+};
+
+// Escapes characters that would break PostgREST's .or() / .ilike() syntax.
+// Commas split or() arguments, percent signs are ilike wildcards, and
+// parentheses can confuse the filter tree.
+const sanitizeSearch = (raw: string): string =>
+  raw.replace(/[,%()]/g, '').trim();
+
 export default function History() {
   const { profile } = useProfile();
   const [loading, setLoading] = useState(true);
@@ -33,14 +70,57 @@ export default function History() {
 
   const [currentPage, setCurrentPage] = useState(1);
   const [searchTerm, setSearchTerm] = useState('');
-  const [filterStatus, setFilterStatus] = useState('All');
+  const [filterStatus, setFilterStatus] = useState<StatusFilter>('All');
+  const [filterMonth, setFilterMonth] = useState<Date | null>(null);
   const [itemsPerPage, setItemsPerPage] = useState(5);
+
+  const [showMonthMenu, setShowMonthMenu] = useState(false);
+  const [showStatusMenu, setShowStatusMenu] = useState(false);
+  const monthMenuRef = useRef<HTMLDivElement>(null);
+  const statusMenuRef = useRef<HTMLDivElement>(null);
+
+  // Tracks which row is currently generating a PDF so we can show a spinner
+  // on just that row (and disable its button) without blocking the rest of
+  // the table.
+  const [downloadingId, setDownloadingId] = useState<string | null>(null);
 
   const [stats, setStats] = useState({
     totalSpent: 0,
     totalHours: 0,
     mostVisitedZone: 'N/A'
   });
+
+  const monthOptions = useMemo(() => {
+    const opts: Array<{ label: string; value: Date | null }> = [
+      { label: 'All Time', value: null }
+    ];
+    const now = new Date();
+    for (let i = 0; i < 6; i++) {
+      const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+      opts.push({
+        label: d.toLocaleDateString('en-US', { month: 'short', year: 'numeric' }),
+        value: d
+      });
+    }
+    return opts;
+  }, []);
+
+  const filterMonthLabel = filterMonth
+    ? filterMonth.toLocaleDateString('en-US', { month: 'short', year: 'numeric' })
+    : 'All Time';
+
+  useEffect(() => {
+    const handleClickOutside = (e: MouseEvent) => {
+      if (monthMenuRef.current && !monthMenuRef.current.contains(e.target as Node)) {
+        setShowMonthMenu(false);
+      }
+      if (statusMenuRef.current && !statusMenuRef.current.contains(e.target as Node)) {
+        setShowStatusMenu(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
 
   const fetchHistory = useCallback(async () => {
     if (!profile?.id) return;
@@ -53,15 +133,39 @@ export default function History() {
         .eq('user_id', profile.id)
         .order('entry_time', { ascending: false });
 
-      // Apply Filters
-      if (searchTerm) {
-        query = query.ilike('vehicle_plate', `%${searchTerm}%`);
-      }
-      if (filterStatus !== 'All') {
-        query = query.eq('status', filterStatus);
+      // Search: match against plate OR zone, with sanitized input so
+      // commas/parens/percents don't break PostgREST's .or() syntax.
+      const term = sanitizeSearch(searchTerm);
+      if (term) {
+        query = query.or(
+          `vehicle_plate.ilike.%${term}%,zone_name.ilike.%${term}%`
+        );
       }
 
-      // Pagination
+      // Status: match any variant that maps to the selected canonical status.
+      // Using .in() keeps filtering server-side (so pagination/count stay
+      // accurate) while tolerating mixed casing and alias values in the DB.
+      if (filterStatus !== 'All') {
+        query = query.in('status', STATUS_VARIANTS[filterStatus]);
+      }
+
+      // Month: limit to entries whose entry_time falls in the selected month.
+      if (filterMonth) {
+        const start = new Date(
+          filterMonth.getFullYear(),
+          filterMonth.getMonth(),
+          1
+        );
+        const end = new Date(
+          filterMonth.getFullYear(),
+          filterMonth.getMonth() + 1,
+          1
+        );
+        query = query
+          .gte('entry_time', start.toISOString())
+          .lt('entry_time', end.toISOString());
+      }
+
       const from = (currentPage - 1) * itemsPerPage;
       const to = from + itemsPerPage - 1;
       query = query.range(from, to);
@@ -72,7 +176,8 @@ export default function History() {
       setSessions((data as any) || []);
       setTotalCount(count || 0);
 
-      // Fetch Stats (for current month)
+      // Stats card always reflects the current calendar month, independent
+      // of the filters applied to the table above.
       const startOfMonth = new Date();
       startOfMonth.setDate(1);
       startOfMonth.setHours(0, 0, 0, 0);
@@ -113,7 +218,7 @@ export default function History() {
     } finally {
       setLoading(false);
     }
-  }, [profile?.id, currentPage, itemsPerPage, searchTerm, filterStatus]);
+  }, [profile?.id, currentPage, itemsPerPage, searchTerm, filterStatus, filterMonth]);
 
   useEffect(() => {
     fetchHistory();
@@ -126,6 +231,19 @@ export default function History() {
     const mins = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
     return `${hours}h ${mins}m`;
   };
+
+  const handleDownloadReceipt = useCallback(async (session: ParkingSession) => {
+    if (downloadingId) return; // Ignore double-clicks while one is in flight.
+    setDownloadingId(session.id);
+    try {
+      await generateReceiptPDF(session, profile);
+    } catch (err: any) {
+      console.error('Failed to generate receipt:', err);
+      alert(`Could not generate receipt: ${err?.message || 'Unknown error'}`);
+    } finally {
+      setDownloadingId(null);
+    }
+  }, [profile, downloadingId]);
 
   const totalPages = Math.max(1, Math.ceil(totalCount / itemsPerPage));
 
@@ -144,8 +262,8 @@ export default function History() {
           <div className="relative w-full md:w-64">
             <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 size-5" />
             <input
-              className="w-full pl-11 pr-4 py-2.5 bg-white border-none rounded-xl focus:ring-2 focus:ring-primary text-sm shadow-sm"
-              placeholder="Search by plate..."
+              className="w-full pl-11 pr-9 py-2.5 bg-white border-none rounded-xl focus:ring-2 focus:ring-primary text-sm shadow-sm"
+              placeholder="Search by plate or zone..."
               type="text"
               value={searchTerm}
               onChange={(e) => {
@@ -153,33 +271,100 @@ export default function History() {
                 setCurrentPage(1);
               }}
             />
+            {searchTerm && (
+              <button
+                type="button"
+                onClick={() => {
+                  setSearchTerm('');
+                  setCurrentPage(1);
+                }}
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 p-0.5 rounded"
+                aria-label="Clear search"
+              >
+                <X size={16} />
+              </button>
+            )}
           </div>
-          <button className="flex items-center gap-2 px-4 py-2.5 bg-white rounded-xl text-sm font-medium border-none shadow-sm hover:bg-slate-50">
-            <Calendar size={18} />
-            <span>{new Date().toLocaleString('default', { month: 'short', year: 'numeric' })}</span>
-          </button>
-          <div className="relative group">
-            <button className="flex items-center gap-2 px-4 py-2.5 bg-white rounded-xl text-sm font-medium border-none shadow-sm hover:bg-slate-50">
+          <div className="relative" ref={monthMenuRef}>
+            <button
+              onClick={() => {
+                setShowMonthMenu(v => !v);
+                setShowStatusMenu(false);
+              }}
+              className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-medium border-none shadow-sm transition-colors ${filterMonth ? 'bg-primary/10 text-primary' : 'bg-white text-slate-700 hover:bg-slate-50'}`}
+            >
+              <Calendar size={18} />
+              <span>{filterMonthLabel}</span>
+            </button>
+            {showMonthMenu && (
+              <div className="absolute right-0 mt-2 w-48 bg-white border border-slate-100 rounded-xl shadow-lg z-20">
+                <div className="py-2 max-h-72 overflow-y-auto">
+                  {monthOptions.map((opt, i) => {
+                    const isActive = (!filterMonth && !opt.value) ||
+                      (filterMonth && opt.value && filterMonth.getTime() === opt.value.getTime());
+                    return (
+                      <button
+                        key={i}
+                        onClick={() => {
+                          setFilterMonth(opt.value);
+                          setCurrentPage(1);
+                          setShowMonthMenu(false);
+                        }}
+                        className={`w-full text-left px-4 py-2 text-sm hover:bg-slate-50 ${isActive ? 'font-bold text-primary bg-primary/5' : 'text-slate-700'}`}
+                      >
+                        {opt.label}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+          </div>
+          <div className="relative" ref={statusMenuRef}>
+            <button
+              onClick={() => {
+                setShowStatusMenu(v => !v);
+                setShowMonthMenu(false);
+              }}
+              className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-medium border-none shadow-sm transition-colors ${filterStatus !== 'All' ? 'bg-primary/10 text-primary' : 'bg-white text-slate-700 hover:bg-slate-50'}`}
+            >
               <Filter size={18} />
               <span>{filterStatus === 'All' ? 'Filters' : filterStatus}</span>
             </button>
-            <div className="absolute right-0 mt-2 w-48 bg-white border border-slate-100 rounded-xl shadow-lg opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all z-10">
-              <div className="py-2">
-                {['All', 'Completed', 'Ongoing', 'Cancelled'].map((status) => (
-                  <button
-                    key={status}
-                    onClick={() => {
-                      setFilterStatus(status);
-                      setCurrentPage(1);
-                    }}
-                    className={`w-full text-left px-4 py-2 text-sm hover:bg-slate-50 ${filterStatus === status ? 'font-bold text-primary bg-primary/5' : 'text-slate-700'}`}
-                  >
-                    {status}
-                  </button>
-                ))}
+            {showStatusMenu && (
+              <div className="absolute right-0 mt-2 w-48 bg-white border border-slate-100 rounded-xl shadow-lg z-20">
+                <div className="py-2">
+                  {(['All', 'Completed', 'Ongoing', 'Cancelled'] as StatusFilter[]).map((status) => (
+                    <button
+                      key={status}
+                      onClick={() => {
+                        setFilterStatus(status);
+                        setCurrentPage(1);
+                        setShowStatusMenu(false);
+                      }}
+                      className={`w-full text-left px-4 py-2 text-sm hover:bg-slate-50 ${filterStatus === status ? 'font-bold text-primary bg-primary/5' : 'text-slate-700'}`}
+                    >
+                      {status}
+                    </button>
+                  ))}
+                </div>
               </div>
-            </div>
+            )}
           </div>
+          {(filterStatus !== 'All' || filterMonth || searchTerm) && (
+            <button
+              onClick={() => {
+                setFilterStatus('All');
+                setFilterMonth(null);
+                setSearchTerm('');
+                setCurrentPage(1);
+              }}
+              className="flex items-center gap-1.5 px-3 py-2.5 text-xs font-bold text-slate-500 hover:text-red-500 transition-colors"
+            >
+              <X size={14} />
+              Clear all
+            </button>
+          )}
         </div>
       </div>
 
@@ -219,60 +404,99 @@ export default function History() {
                     </td>
                   </tr>
                 ) : (
-                  sessions.map((session) => (
-                    <motion.tr
-                      key={session.id}
-                      initial={{ opacity: 0 }}
-                      animate={{ opacity: 1 }}
-                      className="hover:bg-slate-50 transition-colors"
-                    >
-                      <td className="px-6 py-4">
-                        <p className="text-sm font-bold">
-                          {new Date(session.entry_time).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' })}
-                        </p>
-                        <p className="text-xs text-slate-400">
-                          {new Date(session.entry_time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                          {session.exit_time ? ` - ${new Date(session.exit_time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}` : ' - Now'}
-                        </p>
-                      </td>
-                      <td className="px-6 py-4">
-                        <span className="text-sm font-semibold bg-slate-100 px-2.5 py-1 rounded-lg border border-slate-200">{session.vehicle_plate}</span>
-                      </td>
-                      <td className="px-6 py-4">
-                        <p className="text-sm font-medium flex items-center gap-1">
-                          <MapPin size={12} className="text-slate-400" />
-                          {session.zone_name}
-                        </p>
-                      </td>
-                      <td className="px-6 py-4 text-sm font-medium text-slate-600">
-                        {formatDuration(session.entry_time, session.exit_time)}
-                      </td>
-                      <td className={`px-6 py-4 text-sm font-bold ${session.status === 'Ongoing' ? 'text-primary' : 'text-slate-700'}`}>
-                        {session.fee === 0 ? '0 VND' : `${(session.fee || 0).toLocaleString()} VND`}
-                      </td>
-                      <td className="px-6 py-4">
-                        <span className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-wider ${session.status === 'Completed' ? 'bg-green-100 text-green-700' :
-                            session.status === 'Ongoing' ? 'bg-blue-100 text-blue-700' :
-                              'bg-slate-100 text-slate-500'
+                  sessions.map((session) => {
+                    const statusKey = normalizeStatus(session.status);
+                    const isOngoing = statusKey === 'Ongoing';
+                    const isCompleted = statusKey === 'Completed';
+                    const isCancelled = statusKey === 'Cancelled';
+                    return (
+                      <motion.tr
+                        key={session.id}
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        className="hover:bg-slate-50 transition-colors"
+                      >
+                        <td className="px-6 py-4">
+                          <p className="text-sm font-bold">
+                            {new Date(session.entry_time).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' })}
+                          </p>
+                          <p className="text-xs text-slate-400">
+                            {new Date(session.entry_time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                            {session.exit_time ? ` - ${new Date(session.exit_time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}` : ' - Now'}
+                          </p>
+                        </td>
+                        <td className="px-6 py-4">
+                          <span className="text-sm font-semibold bg-slate-100 px-2.5 py-1 rounded-lg border border-slate-200">{session.vehicle_plate}</span>
+                        </td>
+                        <td className="px-6 py-4">
+                          <p className="text-sm font-medium flex items-center gap-1">
+                            <MapPin size={12} className="text-slate-400" />
+                            {session.zone_name}
+                          </p>
+                        </td>
+                        <td className="px-6 py-4 text-sm font-medium text-slate-600">
+                          {formatDuration(session.entry_time, session.exit_time)}
+                        </td>
+                        <td className={`px-6 py-4 text-sm font-bold ${isOngoing ? 'text-primary' : 'text-slate-700'}`}>
+                          {session.fee === 0 ? '0 VND' : `${(session.fee || 0).toLocaleString()} VND`}
+                        </td>
+                        <td className="px-6 py-4">
+                          <span className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-wider ${
+                            isCompleted ? 'bg-green-100 text-green-700' :
+                            isOngoing ? 'bg-blue-100 text-blue-700' :
+                            isCancelled ? 'bg-red-100 text-red-700' :
+                            'bg-slate-100 text-slate-500'
                           }`}>
-                          <span className={`size-1.5 rounded-full ${session.status === 'Completed' ? 'bg-green-500' :
-                              session.status === 'Ongoing' ? 'bg-blue-500' :
-                                'bg-slate-400'
+                            <span className={`size-1.5 rounded-full ${
+                              isCompleted ? 'bg-green-500' :
+                              isOngoing ? 'bg-blue-500' :
+                              isCancelled ? 'bg-red-500' :
+                              'bg-slate-400'
                             }`}></span>
-                          {session.status}
-                        </span>
-                      </td>
-                      <td className="px-6 py-4">
-                        <button
-                          disabled={session.status !== 'Completed'}
-                          className={`text-xs font-bold flex items-center gap-1.5 px-3 py-1.5 rounded-lg transition-all ${session.status === 'Completed' ? 'text-primary bg-primary/5 hover:bg-primary/10' : 'text-slate-300 cursor-not-allowed'}`}
-                        >
-                          <Download size={14} />
-                          Receipt
-                        </button>
-                      </td>
-                    </motion.tr>
-                  ))
+                            {statusKey === 'Unknown' ? (session.status || 'N/A') : statusKey}
+                          </span>
+                        </td>
+                        <td className="px-6 py-4">
+                          {(() => {
+                            const isDownloading = downloadingId === session.id;
+                            const disabled = !isCompleted || isDownloading || (!!downloadingId && !isDownloading);
+                            return (
+                              <button
+                                disabled={disabled}
+                                onClick={() => handleDownloadReceipt(session)}
+                                title={
+                                  !isCompleted
+                                    ? 'Receipt available after the session is completed'
+                                    : 'Download PDF receipt'
+                                }
+                                className={`text-xs font-bold flex items-center gap-1.5 px-3 py-1.5 rounded-lg transition-all ${
+                                  !isCompleted
+                                    ? 'text-slate-300 cursor-not-allowed'
+                                    : isDownloading
+                                      ? 'text-primary bg-primary/10 cursor-wait'
+                                      : disabled
+                                        ? 'text-slate-400 bg-slate-50 cursor-not-allowed'
+                                        : 'text-primary bg-primary/5 hover:bg-primary/10'
+                                }`}
+                              >
+                                {isDownloading ? (
+                                  <>
+                                    <Loader2 size={14} className="animate-spin" />
+                                    Preparing...
+                                  </>
+                                ) : (
+                                  <>
+                                    <Download size={14} />
+                                    Receipt
+                                  </>
+                                )}
+                              </button>
+                            );
+                          })()}
+                        </td>
+                      </motion.tr>
+                    );
+                  })
                 )}
               </AnimatePresence>
             </tbody>

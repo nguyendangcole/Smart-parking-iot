@@ -1,6 +1,5 @@
 import React from 'react';
 import {
-  Bell,
   HelpCircle,
   Edit,
   User,
@@ -12,32 +11,59 @@ import {
   Languages,
   LogOut,
   ChevronRight,
-  Settings as SettingsIcon
+  Settings as SettingsIcon,
+  CheckCircle,
+  AlertCircle,
+  Loader2,
+  X
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useProfile } from '../../../shared/hooks/useProfile';
 import { supabase } from '../../../shared/supabase';
-import { CheckCircle, AlertCircle, Loader2 } from 'lucide-react';
 
 interface SettingsProps {
   onLogout: () => void;
 }
 
+// Mirrors the Storage bucket policy in sql_scripts/07_member_profile_avatar.sql.
+// Keeping these client-side too lets us reject obvious junk BEFORE it ever
+// hits Supabase, so the user gets an instant error instead of a network round-trip.
+const AVATAR_MAX_BYTES = 2 * 1024 * 1024; // 2 MiB
+const AVATAR_ALLOWED_MIME = ['image/png', 'image/jpeg', 'image/jpg', 'image/webp', 'image/gif'];
+
 export default function Settings({ onLogout }: SettingsProps) {
-  const { profile, logout } = useProfile();
+  const { profile, logout, refreshProfile } = useProfile();
   const [isEditing, setIsEditing] = React.useState(false);
   const [formData, setFormData] = React.useState({ full_name: '', email: '' });
   const [profileImage, setProfileImage] = React.useState<string | null>(null);
   const [isSaving, setIsSaving] = React.useState(false);
+  const [isUploadingAvatar, setIsUploadingAvatar] = React.useState(false);
   const [statusMessage, setStatusMessage] = React.useState<{ type: 'success' | 'error', text: string } | null>(null);
   const fileInputRef = React.useRef<HTMLInputElement>(null);
+
+  // Hydrate the local preview from whatever the server has on file. We re-sync
+  // whenever the profile loads or refreshes (e.g. right after an upload) so a
+  // hard reload of /settings still shows the saved picture.
+  React.useEffect(() => {
+    setProfileImage(profile?.avatar_url ?? null);
+  }, [profile?.avatar_url]);
 
   // Password change state
   const [isChangingPassword, setIsChangingPassword] = React.useState(false);
   const [passwordData, setPasswordData] = React.useState({ current: '', new: '', confirm: '' });
+  const [isUpdatingPassword, setIsUpdatingPassword] = React.useState(false);
+  const [showSuccessToast, setShowSuccessToast] = React.useState(false);
 
   // Linked account state
   const [isLinked, setIsLinked] = React.useState(true);
+  const [isHelpOpen, setIsHelpOpen] = React.useState(false);
+
+  // Auto-dismiss the success toast after 3s; cleanly cancels on unmount / re-trigger
+  React.useEffect(() => {
+    if (!showSuccessToast) return;
+    const timer = window.setTimeout(() => setShowSuccessToast(false), 3000);
+    return () => window.clearTimeout(timer);
+  }, [showSuccessToast]);
 
   const handleLinkAccount = () => {
     // In a real app, this would call an API to link/unlink the account
@@ -59,7 +85,19 @@ export default function Settings({ onLogout }: SettingsProps) {
 
   const handleSave = async () => {
     if (!profile) return;
-    
+
+    const trimmedName = formData.full_name.trim();
+    const trimmedEmail = formData.email.trim();
+
+    if (!trimmedName) {
+      setStatusMessage({ type: 'error', text: 'Full name cannot be empty.' });
+      return;
+    }
+    if (!/^\S+@\S+\.\S+$/.test(trimmedEmail)) {
+      setStatusMessage({ type: 'error', text: 'Please enter a valid email address.' });
+      return;
+    }
+
     setIsSaving(true);
     setStatusMessage(null);
 
@@ -67,18 +105,22 @@ export default function Settings({ onLogout }: SettingsProps) {
       const { error } = await supabase
         .from('profiles')
         .update({
-          full_name: formData.full_name,
-          email: formData.email,
+          full_name: trimmedName,
+          email: trimmedEmail,
           updated_at: new Date().toISOString()
         })
         .eq('id', profile.id);
 
       if (error) throw error;
 
+      // Re-fetch the profile so every consumer of useProfile (this screen,
+      // the Sidebar mini-profile, the Dashboard greeting, etc.) sees the
+      // freshly-saved values without a page reload.
+      await refreshProfile();
+
       setStatusMessage({ type: 'success', text: 'Profile updated successfully!' });
       setIsEditing(false);
-      
-      // Auto-hide success message after 3 seconds
+
       setTimeout(() => setStatusMessage(null), 3000);
     } catch (err: any) {
       console.error('Error updating profile:', err);
@@ -88,27 +130,138 @@ export default function Settings({ onLogout }: SettingsProps) {
     }
   };
 
-  const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (e.target.files && e.target.files[0]) {
-      const file = e.target.files[0];
-      const imageUrl = URL.createObjectURL(file);
-      setProfileImage(imageUrl);
+  const handleImageChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    // Always clear the input so the user can re-pick the same file later
+    // (browsers suppress onChange when the value doesn't actually change).
+    if (e.target) e.target.value = '';
+    if (!file || !profile) return;
+
+    if (!AVATAR_ALLOWED_MIME.includes(file.type)) {
+      setStatusMessage({ type: 'error', text: 'Please choose a PNG, JPG, WebP or GIF image.' });
+      return;
+    }
+    if (file.size > AVATAR_MAX_BYTES) {
+      setStatusMessage({ type: 'error', text: 'Image is too large. Maximum size is 2 MB.' });
+      return;
+    }
+
+    // Optimistic preview — flips back to the server URL if the upload fails.
+    const previousImage = profileImage;
+    const localPreview = URL.createObjectURL(file);
+    setProfileImage(localPreview);
+    setIsUploadingAvatar(true);
+    setStatusMessage(null);
+
+    try {
+      // Path layout matches the RLS policy in 07_member_profile_avatar.sql:
+      //   `{auth.uid()}/avatar-{timestamp}.{ext}`
+      // The timestamp gives us a free cache-buster — every upload yields a
+      // new immutable URL, so the CDN never serves a stale image.
+      const ext = (file.name.split('.').pop() || 'png').toLowerCase();
+      const folder = profile.id;
+      const filename = `avatar-${Date.now()}.${ext}`;
+      const path = `${folder}/${filename}`;
+
+      // Best-effort cleanup of the user's previous avatars so Storage doesn't
+      // grow without bound. Failure here is non-fatal — the upload itself is
+      // what actually matters, and a stray old file just costs a few KB.
+      const { data: existing } = await supabase.storage
+        .from('avatars')
+        .list(folder, { limit: 100 });
+      if (existing && existing.length > 0) {
+        const stalePaths = existing.map(obj => `${folder}/${obj.name}`);
+        await supabase.storage.from('avatars').remove(stalePaths);
+      }
+
+      const { error: uploadError } = await supabase.storage
+        .from('avatars')
+        .upload(path, file, {
+          contentType: file.type,
+          cacheControl: '3600',
+          upsert: false
+        });
+      if (uploadError) throw uploadError;
+
+      const { data: urlData } = supabase.storage.from('avatars').getPublicUrl(path);
+      const publicUrl = urlData.publicUrl;
+
+      const { error: updateError } = await supabase
+        .from('profiles')
+        .update({ avatar_url: publicUrl, updated_at: new Date().toISOString() })
+        .eq('id', profile.id);
+      if (updateError) throw updateError;
+
+      // Re-fetch so any other consumer of useProfile (Sidebar, Dashboard) sees
+      // the new picture without a page reload.
+      await refreshProfile();
+      setProfileImage(publicUrl);
+      setStatusMessage({ type: 'success', text: 'Profile picture updated!' });
+      setTimeout(() => setStatusMessage(null), 3000);
+    } catch (err: any) {
+      console.error('Error uploading avatar:', err);
+      setProfileImage(previousImage);
+      setStatusMessage({
+        type: 'error',
+        text: err?.message || 'Failed to upload profile picture.'
+      });
+    } finally {
+      // Free the blob URL we created for the optimistic preview.
+      URL.revokeObjectURL(localPreview);
+      setIsUploadingAvatar(false);
     }
   };
 
   const triggerFileInput = () => {
+    if (isUploadingAvatar) return;
     fileInputRef.current?.click();
   };
 
-  const handlePasswordSubmit = () => {
+  const handlePasswordSubmit = async (e?: React.MouseEvent) => {
+    if (e) e.preventDefault();
+    if (isUpdatingPassword) return;
+
+    if (!passwordData.current || !passwordData.new || !passwordData.confirm) {
+      alert("Please fill in all password fields.");
+      return;
+    }
+    if (passwordData.new.length < 6) {
+      alert("New password must be at least 6 characters.");
+      return;
+    }
+    if (passwordData.new === passwordData.current) {
+      alert("New password must be different from the current password.");
+      return;
+    }
     if (passwordData.new !== passwordData.confirm) {
       alert("New passwords do not match!");
       return;
     }
-    // In a real app, call your API to change password here
-    console.log('Changing password to:', passwordData.new);
-    setIsChangingPassword(false);
-    setPasswordData({ current: '', new: '', confirm: '' });
+
+    // The user is already authenticated (active Supabase session), so we let
+    // `updateUser` rely on the current JWT. Skipping the previous
+    // `signInWithPassword` pre-check removes one network round-trip AND the
+    // `SIGNED_IN` auth cascade (which was also triggering a profile refetch),
+    // so the UI reacts much faster on a successful update.
+    setIsUpdatingPassword(true);
+    try {
+      const { error: updateError } = await supabase.auth.updateUser({
+        password: passwordData.new
+      });
+
+      if (updateError) {
+        alert("Failed to change password: " + updateError.message);
+        return;
+      }
+
+      setIsChangingPassword(false);
+      setPasswordData({ current: '', new: '', confirm: '' });
+      setShowSuccessToast(true);
+    } catch (error: any) {
+      alert("An unexpected error occurred: " + error.message);
+    } finally {
+      setIsUpdatingPassword(false);
+    }
   };
 
   return (
@@ -123,11 +276,10 @@ export default function Settings({ onLogout }: SettingsProps) {
           <p className="text-sm text-slate-500">Manage your profile and app preferences</p>
         </div>
         <div className="flex items-center gap-3">
-          <button className="p-2 rounded-full bg-slate-100 hover:bg-slate-200 transition-colors relative">
-            <Bell size={20} className="text-slate-600" />
-            <span className="absolute top-2 right-2 w-2 h-2 bg-red-500 rounded-full border-2 border-white"></span>
-          </button>
-          <button className="p-2 rounded-full bg-slate-100 hover:bg-slate-200 transition-colors">
+          <button
+            onClick={() => setIsHelpOpen(true)}
+            className="p-2 rounded-full bg-slate-100 hover:bg-slate-200 transition-colors"
+          >
             <HelpCircle size={20} className="text-slate-600" />
           </button>
         </div>
@@ -154,10 +306,19 @@ export default function Settings({ onLogout }: SettingsProps) {
                 referrerPolicy="no-referrer"
               />
             )}
+            {isUploadingAvatar && (
+              <div className="absolute inset-0 flex items-center justify-center bg-black/40 rounded-full">
+                <Loader2 size={28} className="animate-spin text-white" />
+              </div>
+            )}
           </div>
-          <button 
+          <button
             onClick={triggerFileInput}
-            className="absolute bottom-1 right-1 bg-primary text-white p-2 rounded-full shadow-lg border-2 border-white hover:bg-primary/90 transition-colors"
+            disabled={isUploadingAvatar}
+            aria-label="Change profile picture"
+            className={`absolute bottom-1 right-1 bg-primary text-white p-2 rounded-full shadow-lg border-2 border-white transition-colors ${
+              isUploadingAvatar ? 'opacity-60 cursor-not-allowed' : 'hover:bg-primary/90'
+            }`}
           >
             <Edit size={14} />
           </button>
@@ -165,7 +326,7 @@ export default function Settings({ onLogout }: SettingsProps) {
             type="file"
             ref={fileInputRef}
             onChange={handleImageChange}
-            accept="image/*"
+            accept={AVATAR_ALLOWED_MIME.join(',')}
             className="hidden"
           />
         </div>
@@ -265,7 +426,7 @@ export default function Settings({ onLogout }: SettingsProps) {
           </h3>
           <div className="bg-white rounded-2xl border border-slate-200 overflow-hidden divide-y divide-slate-100">
             <button 
-              onClick={() => setIsChangingPassword(true)}
+              onClick={() => setIsChangingPassword(!isChangingPassword)}
               className="w-full flex items-center justify-between p-4 hover:bg-slate-50 transition-colors group"
             >
               <div className="flex items-center gap-3">
@@ -274,8 +435,57 @@ export default function Settings({ onLogout }: SettingsProps) {
                 </div>
                 <span className="font-medium">Change Password</span>
               </div>
-              <ChevronRight size={18} className="text-slate-400" />
+              <ChevronRight size={18} className={`text-slate-400 transition-transform duration-200 ${isChangingPassword ? 'rotate-90' : ''}`} />
             </button>
+            
+            {/* Inline Password Form */}
+            {isChangingPassword && (
+              <div className="p-4 bg-slate-50/50 space-y-4 border-t border-slate-100">
+                <div className="space-y-3">
+                  <input
+                    type="password"
+                    value={passwordData.current}
+                    onChange={e => setPasswordData({ ...passwordData, current: e.target.value })}
+                    className="w-full bg-white border border-slate-200 text-slate-800 rounded-xl px-3 py-2 text-sm outline-none focus:border-primary focus:ring-1 focus:ring-primary/20 transition-all placeholder:text-slate-400"
+                    placeholder="Current password"
+                  />
+                  <input
+                    type="password"
+                    value={passwordData.new}
+                    onChange={e => setPasswordData({ ...passwordData, new: e.target.value })}
+                    className="w-full bg-white border border-slate-200 text-slate-800 rounded-xl px-3 py-2 text-sm outline-none focus:border-primary focus:ring-1 focus:ring-primary/20 transition-all placeholder:text-slate-400"
+                    placeholder="New password"
+                  />
+                  <input
+                    type="password"
+                    value={passwordData.confirm}
+                    onChange={e => setPasswordData({ ...passwordData, confirm: e.target.value })}
+                    className="w-full bg-white border border-slate-200 text-slate-800 rounded-xl px-3 py-2 text-sm outline-none focus:border-primary focus:ring-1 focus:ring-primary/20 transition-all placeholder:text-slate-400"
+                    placeholder="Confirm new password"
+                  />
+                </div>
+                <div className="flex gap-2">
+                  <button
+                    onClick={() => {
+                      setIsChangingPassword(false);
+                      setPasswordData({ current: '', new: '', confirm: '' });
+                    }}
+                    disabled={isUpdatingPassword}
+                    className="flex-1 bg-white border border-slate-200 text-slate-600 py-2 rounded-xl text-sm font-bold hover:bg-slate-50 transition-colors disabled:opacity-60 disabled:cursor-not-allowed"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    onClick={handlePasswordSubmit}
+                    disabled={isUpdatingPassword}
+                    className="flex-1 bg-primary text-white py-2 rounded-xl text-sm font-bold hover:bg-primary/90 transition-colors shadow-sm disabled:opacity-60 disabled:cursor-not-allowed"
+                  >
+                    {isUpdatingPassword ? 'Updating...' : 'Update'}
+                  </button>
+                </div>
+              </div>
+            )}
+            
             <button 
               onClick={handleLinkAccount}
               className="w-full flex items-center justify-between p-4 hover:bg-slate-50 transition-colors group"
@@ -393,57 +603,61 @@ export default function Settings({ onLogout }: SettingsProps) {
         <p className="text-xs text-slate-400 mt-1">© 2024 Ho Chi Minh City University of Technology</p>
       </div>
 
-      {/* Password Change Modal */}
-      {isChangingPassword && (
+      {/* Help Modal */}
+      {isHelpOpen && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
-          <div className="bg-white rounded-2xl p-6 w-full max-w-sm space-y-4 shadow-xl">
-            <h3 className="text-xl font-bold">Change Password</h3>
-            <div className="space-y-3">
-              <div>
-                <label className="text-xs font-bold text-slate-500 uppercase">Current Password</label>
-                <input
-                  type="password"
-                  value={passwordData.current}
-                  onChange={e => setPasswordData({ ...passwordData, current: e.target.value })}
-                  className="w-full bg-slate-50 border border-slate-200 rounded px-3 py-2 outline-none focus:border-primary focus:ring-1 focus:ring-primary mt-1"
-                />
+          <div className="bg-white rounded-2xl p-6 w-full max-w-sm space-y-4 shadow-xl relative">
+            <div className="flex items-center gap-3">
+              <div className="p-2 bg-primary/10 text-primary rounded-xl">
+                <HelpCircle size={24} />
               </div>
-              <div>
-                <label className="text-xs font-bold text-slate-500 uppercase">New Password</label>
-                <input
-                  type="password"
-                  value={passwordData.new}
-                  onChange={e => setPasswordData({ ...passwordData, new: e.target.value })}
-                  className="w-full bg-slate-50 border border-slate-200 rounded px-3 py-2 outline-none focus:border-primary focus:ring-1 focus:ring-primary mt-1"
-                />
-              </div>
-              <div>
-                <label className="text-xs font-bold text-slate-500 uppercase">Confirm Password</label>
-                <input
-                  type="password"
-                  value={passwordData.confirm}
-                  onChange={e => setPasswordData({ ...passwordData, confirm: e.target.value })}
-                  className="w-full bg-slate-50 border border-slate-200 rounded px-3 py-2 outline-none focus:border-primary focus:ring-1 focus:ring-primary mt-1"
-                />
-              </div>
+              <h3 className="text-xl font-bold">Help & Support</h3>
             </div>
-            <div className="flex gap-3 pt-4">
-              <button
-                onClick={handlePasswordSubmit}
-                className="flex-1 bg-primary text-white py-2 rounded-lg font-bold hover:bg-primary/90 transition-colors"
-              >
-                Update
-              </button>
-              <button
-                onClick={() => setIsChangingPassword(false)}
-                className="flex-1 bg-slate-100 text-slate-600 py-2 rounded-lg font-bold hover:bg-slate-200 transition-colors"
-              >
-                Cancel
-              </button>
+            <p className="text-sm text-slate-500 leading-relaxed">
+              If you need assistance with your profile, settings, or linked accounts, our support team is available 24/7.
+            </p>
+            <div className="bg-slate-50 p-4 rounded-xl border border-slate-100 flex flex-col gap-2">
+              <p className="text-xs font-bold text-slate-400 uppercase tracking-widest">Email Support</p>
+              <p className="text-sm font-semibold text-slate-800">parking@hcmut.edu.vn</p>
+              <div className="h-px w-full bg-slate-200 my-1"></div>
+              <p className="text-xs font-bold text-slate-400 uppercase tracking-widest">Emergency Hotline</p>
+              <p className="text-sm font-semibold text-slate-800">028-1234-5678</p>
             </div>
+            <button
+              onClick={() => setIsHelpOpen(false)}
+              className="w-full bg-slate-100 text-slate-600 py-2.5 rounded-xl font-bold hover:bg-slate-200 transition-colors mt-2"
+            >
+              Close
+            </button>
           </div>
         </div>
       )}
+
+      {/* Success Toast Notification */}
+      <AnimatePresence>
+        {showSuccessToast && (
+          <motion.div
+            key="password-success-toast"
+            role="status"
+            aria-live="polite"
+            initial={{ opacity: 0, y: 40, scale: 0.95 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            exit={{ opacity: 0, y: 20, scale: 0.95 }}
+            transition={{ type: 'spring', stiffness: 320, damping: 26 }}
+            className="fixed bottom-8 left-1/2 -translate-x-1/2 bg-green-500 text-white pl-5 pr-3 py-3 rounded-2xl shadow-xl flex items-center gap-3 z-50 font-bold"
+          >
+            <CheckCircle size={20} />
+            <span>Password changed successfully</span>
+            <button
+              onClick={() => setShowSuccessToast(false)}
+              aria-label="Dismiss notification"
+              className="ml-1 p-1 rounded-full hover:bg-white/20 transition-colors"
+            >
+              <X size={16} />
+            </button>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </motion.div>
   );
 }
