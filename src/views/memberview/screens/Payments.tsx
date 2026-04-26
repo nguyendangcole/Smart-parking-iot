@@ -21,6 +21,8 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { supabase } from '../../../shared/supabase';
 import { useProfile } from '../../../shared/hooks/useProfile';
 import SubscriptionDrawer from '../components/SubscriptionDrawer';
+import TopUpDrawer from '../components/TopUpDrawer';
+import { LOW_BALANCE_THRESHOLD } from '../../../shared/utils/notifications';
 
 const DURATION_OPTIONS = [
   { days: 30, label: '30 Days', discount: 0, tag: '' },
@@ -48,6 +50,7 @@ export default function Payments() {
 
   const [showAllHistory, setShowAllHistory] = React.useState(false);
   const [showSubscriptionDrawer, setShowSubscriptionDrawer] = React.useState(false);
+  const [showTopUpDrawer, setShowTopUpDrawer] = React.useState(false);
 
   const [showExtendModal, setShowExtendModal] = React.useState(false);
   const [selectedDuration, setSelectedDuration] = React.useState(0);
@@ -450,6 +453,43 @@ export default function Payments() {
         <h2 className="text-2xl font-bold text-slate-900">Parking & Vehicles</h2>
         <p className="text-slate-500 text-sm">Manage your parking plans and vehicle information.</p>
       </header>
+
+      {/* Low-balance alert. Renders only when the member has opted in
+          (Settings -> Notifications -> Low Balance Alerts) AND the
+          wallet has dipped below the threshold. AnimatePresence keeps
+          the entry/exit smooth as the balance crosses the line. */}
+      <AnimatePresence>
+        {profile?.notify_low_balance !== false && userBalance < LOW_BALANCE_THRESHOLD && (
+          <motion.div
+            key="low-balance-banner"
+            initial={{ opacity: 0, y: -8 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -8 }}
+            transition={{ duration: 0.2 }}
+            className="flex items-center gap-4 p-4 rounded-2xl border border-red-200 bg-red-50/80 shadow-sm"
+            role="alert"
+          >
+            <div className="w-11 h-11 rounded-xl bg-red-100 text-red-600 flex items-center justify-center shrink-0">
+              <AlertCircle size={22} />
+            </div>
+            <div className="flex-1 min-w-0">
+              <p className="text-sm font-bold text-red-700">Low wallet balance</p>
+              <p className="text-xs text-red-600/80">
+                Your balance is{' '}
+                <span className="font-bold">{userBalance.toLocaleString()} VND</span>
+                , below the {LOW_BALANCE_THRESHOLD.toLocaleString()} VND alert threshold. Top up to avoid service interruptions.
+              </p>
+            </div>
+            <button
+              type="button"
+              onClick={() => setShowTopUpDrawer(true)}
+              className="shrink-0 px-4 py-2 rounded-xl bg-red-600 text-white text-sm font-bold hover:bg-red-700 transition-colors shadow-sm"
+            >
+              Top Up Now
+            </button>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       <div className="grid grid-cols-1 xl:grid-cols-3 gap-6">
         {/* Main Plan Card - click anywhere on the card (except the Extend
@@ -1002,6 +1042,14 @@ export default function Payments() {
           setShowExtendModal(true);
         }}
       />
+
+      <TopUpDrawer
+        open={showTopUpDrawer}
+        onClose={() => setShowTopUpDrawer(false)}
+        profile={profile}
+        refreshProfile={refreshProfile}
+      />
     </motion.div>
   );
 }
+ 

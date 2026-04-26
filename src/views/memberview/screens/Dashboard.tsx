@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef, useCallback } from 'react';
+import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import {
   Bell,
   Calendar,
@@ -18,6 +18,10 @@ import { supabase } from '../../../shared/supabase';
 import { Screen } from '../types';
 import TopUpDrawer from '../components/TopUpDrawer';
 import FindSlotDrawer from '../components/FindSlotDrawer';
+import {
+  LOW_BALANCE_THRESHOLD,
+  PROMOTIONAL_NOTIFICATIONS,
+} from '../../../shared/utils/notifications';
 
 interface DashboardProps {
   onNavigate?: (screen: Screen) => void;
@@ -259,15 +263,107 @@ export default function Dashboard({ onNavigate }: DashboardProps) {
   const [activityPeriod, setActivityPeriod] = useState('7');
   const [showTopUpDrawer, setShowTopUpDrawer] = useState(false);
   const [showFindSlotDrawer, setShowFindSlotDrawer] = useState(false);
-  const [notifications, setNotifications] = useState([
-    { id: 1, title: 'Session Ending Soon', message: 'Your parking session at B2 Building will end in 15 minutes.', time: '10 mins ago', unread: true },
-    { id: 2, title: 'Payment Successful', message: 'Successfully topped up 50,000 VND to your wallet.', time: '2 hours ago', unread: false },
-    { id: 3, title: 'New Reward Tier', message: 'Congratulations! You are only 260 points away from Gold tier.', time: '1 day ago', unread: false },
+  // Static "system" notifications (mock data for now). Their read state
+  // lives here. Dynamic entries (low-balance, promotions) are computed
+  // from `profile` further down and tracked separately so toggling a
+  // pref in Settings makes them appear/disappear in real time.
+  const [staticNotifications, setStaticNotifications] = useState<
+    Array<{ id: string; title: string; message: string; time: string; unread: boolean }>
+  >([
+    { id: 'session-ending', title: 'Session Ending Soon', message: 'Your parking session at B2 Building will end in 15 minutes.', time: '10 mins ago', unread: true },
+    { id: 'payment-success', title: 'Payment Successful', message: 'Successfully topped up 50,000 VND to your wallet.', time: '2 hours ago', unread: false },
+    { id: 'reward-tier',    title: 'New Reward Tier',    message: 'Congratulations! You are only 260 points away from Gold tier.', time: '1 day ago', unread: false },
   ]);
+
+  // Read-state for dynamic entries. Resets on reload, which is fine —
+  // a low balance that returns BELOW the threshold should re-alert the
+  // member, and refreshed promo content should be considered new.
+  const [readDynamicIds, setReadDynamicIds] = useState<Set<string>>(new Set());
 
   const notificationRef = useRef<HTMLDivElement>(null);
   const calendarRef = useRef<HTMLDivElement>(null);
   const rankTableRef = useRef<HTMLDivElement>(null);
+
+  // Compose the displayed notification list. Order: a low-balance
+  // alert first (most actionable), then static system notifications,
+  // then promotional offers — so urgent items are visible at the top
+  // of the dropdown without scrolling.
+  const notifications = useMemo(() => {
+    const list: Array<{
+      id: string;
+      title: string;
+      message: string;
+      time: string;
+      unread: boolean;
+    }> = [];
+
+    const balance = Number(profile?.balance ?? 0);
+    // `notify_low_balance` defaults to TRUE so members on a DB without
+    // the 08_member_notification_prefs migration still get alerted.
+    const lowBalanceOn = profile?.notify_low_balance !== false;
+    if (lowBalanceOn && balance < LOW_BALANCE_THRESHOLD) {
+      list.push({
+        id: 'low-balance',
+        title: 'Low Wallet Balance',
+        message: `Your balance is ${balance.toLocaleString()} VND, below the ${LOW_BALANCE_THRESHOLD.toLocaleString()} VND alert threshold. Top up to keep parking.`,
+        time: 'Just now',
+        unread: !readDynamicIds.has('low-balance'),
+      });
+    }
+
+    list.push(...staticNotifications);
+
+    // Promotions are opt-in; default FALSE.
+    if (profile?.notify_promotions === true) {
+      PROMOTIONAL_NOTIFICATIONS.forEach((p) => {
+        list.push({
+          id: p.id,
+          title: p.title,
+          message: p.message,
+          time: p.time,
+          unread: !readDynamicIds.has(p.id),
+        });
+      });
+    }
+
+    return list;
+  }, [
+    profile?.balance,
+    profile?.notify_low_balance,
+    profile?.notify_promotions,
+    staticNotifications,
+    readDynamicIds,
+  ]);
+
+  // Single click handler that routes by source: dynamic entries
+  // (low-balance, promos) are tracked in the Set, static entries are
+  // updated in place via setStaticNotifications.
+  const handleNotificationClick = (id: string) => {
+    const isStatic = staticNotifications.some((n) => n.id === id);
+    if (isStatic) {
+      setStaticNotifications((prev) =>
+        prev.map((n) => (n.id === id ? { ...n, unread: false } : n))
+      );
+      return;
+    }
+    setReadDynamicIds((prev) => {
+      if (prev.has(id)) return prev;
+      const next = new Set(prev);
+      next.add(id);
+      return next;
+    });
+  };
+
+  // "Mark all as read" must clear unread state across both sources so
+  // the bell-dot disappears and stays gone until something new arrives.
+  const handleMarkAllRead = () => {
+    setStaticNotifications((prev) => prev.map((n) => ({ ...n, unread: false })));
+    setReadDynamicIds((prev) => {
+      const next = new Set(prev);
+      notifications.forEach((n) => next.add(n.id));
+      return next;
+    });
+  };
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
@@ -632,7 +728,7 @@ export default function Dashboard({ onNavigate }: DashboardProps) {
                 <div className="flex justify-between items-center mb-4">
                   <h3 className="font-bold text-slate-800">Notifications</h3>
                   <button 
-                    onClick={() => setNotifications(notifications.map(n => ({ ...n, unread: false })))}
+                    onClick={handleMarkAllRead}
                     className="text-xs text-primary hover:underline font-medium"
                   >
                     Mark all as read
@@ -643,7 +739,7 @@ export default function Dashboard({ onNavigate }: DashboardProps) {
                     <div 
                       key={notification.id} 
                       className={`p-3 rounded-xl border transition-colors ${notification.unread ? 'bg-primary/5 border-primary/20' : 'bg-slate-50 border-slate-100'}`}
-                      onClick={() => setNotifications(notifications.map(n => n.id === notification.id ? { ...n, unread: false } : n))}
+                      onClick={() => handleNotificationClick(notification.id)}
                     >
                       <div className="flex justify-between items-start mb-1">
                         <h4 className={`text-sm font-bold ${notification.unread ? 'text-slate-900' : 'text-slate-700'}`}>{notification.title}</h4>

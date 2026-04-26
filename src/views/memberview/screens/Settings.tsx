@@ -20,6 +20,7 @@ import {
 import { motion, AnimatePresence } from 'framer-motion';
 import { useProfile } from '../../../shared/hooks/useProfile';
 import { supabase } from '../../../shared/supabase';
+import { LOW_BALANCE_THRESHOLD } from '../../../shared/utils/notifications';
 
 interface SettingsProps {
   onLogout: () => void;
@@ -73,6 +74,35 @@ export default function Settings({ onLogout }: SettingsProps) {
   const handleLogout = async () => {
     await logout();
     onLogout();
+  };
+
+  // Persist a single boolean notification preference to the
+  // `profiles` row backing the current session. We refresh the shared
+  // profile snapshot afterwards so every other consumer of useProfile
+  // (Payments banner, Dashboard bell) reflects the new setting
+  // immediately without a hard reload. On failure we still refresh —
+  // that re-syncs the Toggle's optimistic UI back to the saved truth.
+  const handleNotificationPrefChange = async (
+    field: 'notify_low_balance' | 'notify_promotions',
+    value: boolean
+  ) => {
+    if (!profile?.id) return;
+    try {
+      const { error } = await supabase
+        .from('profiles')
+        .update({ [field]: value, updated_at: new Date().toISOString() })
+        .eq('id', profile.id);
+      if (error) throw error;
+      await refreshProfile();
+    } catch (err: any) {
+      console.error(`Failed to update ${field}:`, err);
+      setStatusMessage({
+        type: 'error',
+        text: err?.message || 'Failed to update notification preference.',
+      });
+      setTimeout(() => setStatusMessage(null), 3000);
+      await refreshProfile();
+    }
   };
 
   const startEditing = () => {
@@ -547,17 +577,32 @@ export default function Settings({ onLogout }: SettingsProps) {
             <BellIcon size={20} className="text-primary" /> Notifications
           </h3>
           <div className="bg-white rounded-2xl border border-slate-200 overflow-hidden divide-y divide-slate-100">
-            {[
-              { label: 'Parking Sessions', sub: 'Alerts when session starts or ends', checked: true },
-              { label: 'Low Balance Alerts', sub: 'Notify when balance is below 50,000 VND', checked: true },
-              { label: 'Promotional Offers', sub: 'New parking deals & campus news', checked: false },
-            ].map((item, i) => (
-              <div key={i} className="flex items-center justify-between p-4">
+            {([
+              {
+                key: 'notify_low_balance',
+                label: 'Low Balance Alerts',
+                sub: `Notify when balance is below ${LOW_BALANCE_THRESHOLD.toLocaleString()} VND`,
+                // Default to ON when the column hasn't been migrated yet
+                // so existing members don't lose their alerts.
+                checked: profile?.notify_low_balance ?? true,
+              },
+              {
+                key: 'notify_promotions',
+                label: 'Promotional Offers',
+                sub: 'New parking deals & campus news',
+                // Default OFF — promotions are opt-in.
+                checked: profile?.notify_promotions ?? false,
+              },
+            ] as const).map((item) => (
+              <div key={item.key} className="flex items-center justify-between p-4">
                 <div className="flex flex-col">
                   <span className="font-medium">{item.label}</span>
                   <span className="text-xs text-slate-500">{item.sub}</span>
                 </div>
-                <Toggle checked={item.checked} />
+                <Toggle
+                  checked={item.checked}
+                  onChange={(val) => handleNotificationPrefChange(item.key, val)}
+                />
               </div>
             ))}
           </div>

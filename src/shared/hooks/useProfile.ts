@@ -21,6 +21,12 @@ export interface Profile {
   avatar_url?: string | null;
   dark_mode?: boolean | null;
   notifications_enabled?: boolean | null;
+  // Granular notification toggles surfaced on the Settings page.
+  // Added in sql_scripts/08_member_notification_prefs.sql; we keep
+  // them optional in the interface so consumers running against an
+  // older DB without the migration still type-check.
+  notify_low_balance?: boolean | null;
+  notify_promotions?: boolean | null;
   preferred_language?: string | null;
   two_factor_enabled?: boolean | null;
   created_at?: string | null;
