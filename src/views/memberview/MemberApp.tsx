@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { Screen } from './types';
 import Sidebar from './components/Sidebar';
+import AIChatbot from './components/AIChatbot';
 import Dashboard from './screens/Dashboard';
 import History from './screens/History';
 import Payments from './screens/Payments';
@@ -75,6 +76,8 @@ export default function MemberApp() {
           />
         )}
       </main>
+
+      <AIChatbot />
     </div>
   );
 }
