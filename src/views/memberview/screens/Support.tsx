@@ -111,24 +111,24 @@ export default function Support() {
     <motion.div
       initial={{ opacity: 0, scale: 0.98 }}
       animate={{ opacity: 1, scale: 1 }}
-      className="max-w-6xl mx-auto flex flex-col gap-8 pb-10"
+      className="max-w-6xl mx-auto flex flex-col gap-6 md:gap-8 pb-10"
     >
-      <header className="flex flex-col gap-2">
-        <h1 className="text-4xl font-extrabold tracking-tight text-slate-900">How can we help?</h1>
-        <p className="text-slate-500">Quickly find help or contact our 24/7 dedicated support team.</p>
+      <header className="flex flex-col gap-1.5 md:gap-2">
+        <h1 className="text-2xl sm:text-3xl md:text-4xl font-extrabold tracking-tight text-slate-900">How can we help?</h1>
+        <p className="text-sm sm:text-base text-slate-500">Quickly find help or contact our 24/7 dedicated support team.</p>
       </header>
 
       {/* Hero Search Section */}
-      <div className="relative bg-primary rounded-3xl p-8 md:p-12 overflow-hidden shadow-2xl shadow-primary/20">
+      <div className="relative bg-primary rounded-3xl p-6 sm:p-8 md:p-12 overflow-hidden shadow-2xl shadow-primary/20">
         <div className="absolute top-0 right-0 w-64 h-64 bg-white/10 rounded-full -mr-32 -mt-32 blur-3xl"></div>
-        <div className="relative z-10 flex flex-col items-center gap-6">
-          <h2 className="text-2xl md:text-3xl font-bold text-white text-center">Search for answers</h2>
+        <div className="relative z-10 flex flex-col items-center gap-4 sm:gap-6">
+          <h2 className="text-xl sm:text-2xl md:text-3xl font-bold text-white text-center">Search for answers</h2>
           <div className="relative w-full max-w-2xl">
-            <Search className="absolute left-5 top-1/2 -translate-y-1/2 text-slate-400 size-6" />
+            <Search className="absolute left-4 sm:left-5 top-1/2 -translate-y-1/2 text-slate-400 size-5 sm:size-6" />
             <input
               type="text"
               placeholder="Search help articles..."
-              className="w-full pl-14 pr-14 py-4 rounded-2xl bg-white border-none shadow-xl focus:ring-4 focus:ring-white/20 text-lg outline-none"
+              className="w-full pl-12 sm:pl-14 pr-12 sm:pr-14 py-3 sm:py-4 rounded-2xl bg-white border-none shadow-xl focus:ring-4 focus:ring-white/20 text-base sm:text-lg outline-none"
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
             />
@@ -137,13 +137,13 @@ export default function Support() {
                 type="button"
                 onClick={() => setSearchTerm('')}
                 aria-label="Clear search"
-                className="absolute right-4 top-1/2 -translate-y-1/2 p-1.5 rounded-full text-slate-400 hover:text-slate-700 hover:bg-slate-100 transition-all"
+                className="absolute right-3 sm:right-4 top-1/2 -translate-y-1/2 p-1.5 rounded-full text-slate-400 hover:text-slate-700 hover:bg-slate-100 transition-all"
               >
                 <X size={18} />
               </button>
             )}
           </div>
-          <div className="flex flex-wrap justify-center gap-3">
+          <div className="flex flex-wrap justify-center gap-2 sm:gap-3">
             {searchTags.map((tag) => {
               const isActive = searchTerm.toLowerCase() === tag.toLowerCase();
               return (
@@ -151,7 +151,7 @@ export default function Support() {
                   key={tag}
                   type="button"
                   onClick={() => handleTagClick(tag)}
-                  className={`px-4 py-1.5 rounded-full text-sm font-medium transition-all ${
+                  className={`px-3 sm:px-4 py-1.5 rounded-full text-xs sm:text-sm font-medium transition-all ${
                     isActive
                       ? 'bg-white text-primary shadow-md'
                       : 'bg-white/10 text-white hover:bg-white/20'
@@ -165,7 +165,7 @@ export default function Support() {
         </div>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 md:gap-8">
         {/* Contact Methods */}
         <div className="flex flex-col gap-4">
           <h3 className="text-xl font-bold text-slate-800">Direct Support</h3>
@@ -284,13 +284,13 @@ export default function Support() {
           </div>
 
           {/* Contact Form */}
-          <div className="mt-4 bg-white border border-slate-100 p-8 rounded-3xl shadow-sm">
-            <div className="flex items-center gap-3 mb-6">
+          <div className="mt-2 md:mt-4 bg-white border border-slate-100 p-5 sm:p-6 md:p-8 rounded-3xl shadow-sm">
+            <div className="flex items-center gap-3 mb-5 md:mb-6">
               <div className="p-2 bg-primary/10 text-primary rounded-xl">
                 <LifeBuoy size={24} />
               </div>
               <div>
-                <h4 className="font-bold text-lg text-slate-800">Submit a Request</h4>
+                <h4 className="font-bold text-base sm:text-lg text-slate-800">Submit a Request</h4>
                 <p className="text-xs text-slate-400">We'll get back to you in less than 24 hours.</p>
               </div>
             </div>

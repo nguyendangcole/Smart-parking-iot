@@ -19,7 +19,7 @@ export default function ExitPayment({ onBack }: ExitPaymentProps) {
     <motion.div 
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
-      className="max-w-[480px] mx-auto w-full flex flex-col gap-8 py-8"
+      className="max-w-[480px] mx-auto w-full flex flex-col gap-6 sm:gap-8 py-4 sm:py-8"
     >
       {/* Header */}
       <div className="flex items-center justify-between">
@@ -47,8 +47,8 @@ export default function ExitPayment({ onBack }: ExitPaymentProps) {
       {/* Amount Section */}
       <div className="text-center flex flex-col gap-2">
         <p className="text-slate-500 font-semibold uppercase tracking-widest text-xs">Total Amount Due</p>
-        <h1 className="text-6xl font-black tracking-tighter text-transparent bg-clip-text bg-gradient-to-br from-primary to-blue-400 drop-shadow-sm">
-          5.000<span className="text-2xl ml-1 text-slate-400">VND</span>
+        <h1 className="text-5xl sm:text-6xl font-black tracking-tighter text-transparent bg-clip-text bg-gradient-to-br from-primary to-blue-400 drop-shadow-sm">
+          5.000<span className="text-xl sm:text-2xl ml-1 text-slate-400">VND</span>
         </h1>
         <div className="flex justify-center gap-4 mt-2">
           <div className="flex flex-col items-center">
@@ -70,7 +70,7 @@ export default function ExitPayment({ onBack }: ExitPaymentProps) {
       {/* QR Code Container */}
       <div className="relative group">
         <div className="absolute -inset-1 bg-gradient-to-r from-primary to-blue-400 rounded-2xl blur opacity-25 group-hover:opacity-50 transition duration-1000"></div>
-        <div className="relative flex flex-col items-center bg-white p-8 rounded-2xl border border-slate-200 shadow-xl">
+        <div className="relative flex flex-col items-center bg-white p-6 sm:p-8 rounded-2xl border border-slate-200 shadow-xl">
           <div className="relative w-full aspect-square max-w-[240px] bg-slate-50 rounded-xl overflow-hidden flex items-center justify-center p-4 border-2 border-primary/5">
             <img 
               alt="Payment QR Code" 
@@ -114,10 +114,10 @@ export default function ExitPayment({ onBack }: ExitPaymentProps) {
       </div>
 
       {/* Action Buttons */}
-      <div className="flex flex-col gap-3 mt-4">
+      <div className="flex flex-col gap-3 mt-2 sm:mt-4">
         <button 
           onClick={onBack}
-          className="w-full bg-primary hover:bg-primary-dark text-white font-bold py-5 rounded-2xl shadow-[0_8px_0_0_#003a70] active:shadow-none active:translate-y-[4px] transition-all flex items-center justify-center gap-2 text-lg"
+          className="w-full bg-primary hover:bg-primary-dark text-white font-bold py-4 sm:py-5 rounded-2xl shadow-[0_8px_0_0_#003a70] active:shadow-none active:translate-y-[4px] transition-all flex items-center justify-center gap-2 text-base sm:text-lg"
         >
           Confirm Paid
           <CheckCircle size={24} />

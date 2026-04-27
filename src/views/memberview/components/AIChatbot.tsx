@@ -102,7 +102,7 @@ export default function AIChatbot() {
         whileHover={{ scale: 1.1, rotate: 5 }}
         whileTap={{ scale: 0.9 }}
         onClick={() => setIsOpen(!isOpen)}
-        className="fixed bottom-6 right-6 w-16 h-16 bg-primary text-white rounded-2xl shadow-[0_8px_30px_rgb(0,84,163,0.4)] flex items-center justify-center z-[60] cursor-pointer group"
+        className="fixed bottom-4 right-4 sm:bottom-6 sm:right-6 w-14 h-14 sm:w-16 sm:h-16 bg-primary text-white rounded-2xl shadow-[0_8px_30px_rgb(0,84,163,0.4)] flex items-center justify-center z-[60] cursor-pointer group"
       >
         <div className="absolute inset-0 bg-white/20 rounded-2xl opacity-0 group-hover:opacity-100 transition-opacity" />
         <span className="material-symbols-outlined text-3xl transition-transform duration-300">
@@ -124,10 +124,10 @@ export default function AIChatbot() {
             initial={{ opacity: 0, y: 40, scale: 0.9, blur: 10 }}
             animate={{ opacity: 1, y: 0, scale: 1, blur: 0 }}
             exit={{ opacity: 0, y: 40, scale: 0.9, blur: 10 }}
-            className="fixed bottom-24 right-6 w-[400px] max-w-[calc(100vw-3rem)] h-[600px] max-h-[calc(100vh-8rem)] glass-panel border border-white/40 rounded-[32px] shadow-[0_20px_50px_rgba(0,0,0,0.2)] z-[60] flex flex-col overflow-hidden"
+            className="fixed bottom-20 sm:bottom-24 right-4 sm:right-6 w-[400px] max-w-[calc(100vw-2rem)] sm:max-w-[calc(100vw-3rem)] h-[600px] max-h-[calc(100vh-7rem)] sm:max-h-[calc(100vh-8rem)] glass-panel border border-white/40 rounded-3xl sm:rounded-[32px] shadow-[0_20px_50px_rgba(0,0,0,0.2)] z-[60] flex flex-col overflow-hidden"
           >
             {/* Header */}
-            <div className="p-6 bg-gradient-to-r from-primary to-primary-dark text-white relative overflow-hidden">
+            <div className="p-5 sm:p-6 bg-gradient-to-r from-primary to-primary-dark text-white relative overflow-hidden">
               <div className="absolute top-0 right-0 p-8 opacity-10 rotate-12">
                 <span className="material-symbols-outlined text-8xl">smart_toy</span>
               </div>
@@ -147,7 +147,7 @@ export default function AIChatbot() {
             </div>
 
             {/* Chat Body */}
-            <div className="flex-1 overflow-y-auto p-6 space-y-6 bg-slate-50/50">
+            <div className="flex-1 overflow-y-auto p-4 sm:p-6 space-y-4 sm:space-y-6 bg-slate-50/50">
               {messages.map((msg, idx) => (
                 <motion.div
                   initial={{ opacity: 0, x: msg.role === 'user' ? 20 : -20 }}
@@ -201,7 +201,7 @@ export default function AIChatbot() {
             </div>
 
             {/* Input Area */}
-            <div className="p-6 bg-white/80 backdrop-blur-md border-t border-slate-100">
+            <div className="p-4 sm:p-6 bg-white/80 backdrop-blur-md border-t border-slate-100">
               <div className="relative group">
                 <input
                   type="text"

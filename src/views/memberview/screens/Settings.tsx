@@ -298,14 +298,14 @@ export default function Settings({ onLogout }: SettingsProps) {
     <motion.div
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
-      className="space-y-8 max-w-5xl mx-auto w-full"
+      className="space-y-6 md:space-y-8 max-w-5xl mx-auto w-full"
     >
-      <header className="flex items-center justify-between px-8 py-6 bg-white border-b border-slate-200 rounded-2xl">
-        <div>
-          <h2 className="text-2xl font-extrabold text-slate-900">Settings</h2>
-          <p className="text-sm text-slate-500">Manage your profile and app preferences</p>
+      <header className="flex items-center justify-between gap-3 px-5 sm:px-6 md:px-8 py-5 sm:py-6 bg-white border-b border-slate-200 rounded-2xl">
+        <div className="min-w-0">
+          <h2 className="text-xl sm:text-2xl font-extrabold text-slate-900">Settings</h2>
+          <p className="text-xs sm:text-sm text-slate-500">Manage your profile and app preferences</p>
         </div>
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-3 shrink-0">
           <button
             onClick={() => setIsHelpOpen(true)}
             className="p-2 rounded-full bg-slate-100 hover:bg-slate-200 transition-colors"
@@ -315,7 +315,7 @@ export default function Settings({ onLogout }: SettingsProps) {
         </div>
       </header>
 
-      <section className="bg-white rounded-2xl p-8 border border-slate-200 flex flex-col md:flex-row gap-8 items-center md:items-start">
+      <section className="bg-white rounded-2xl p-5 sm:p-6 md:p-8 border border-slate-200 flex flex-col md:flex-row gap-6 md:gap-8 items-center md:items-start">
         <div className="relative">
           <div className="w-32 h-32 rounded-full overflow-hidden border-4 border-primary/20 bg-primary/10 flex items-center justify-center text-primary">
             {profileImage ? (
@@ -415,11 +415,11 @@ export default function Settings({ onLogout }: SettingsProps) {
             )}
           </AnimatePresence>
 
-          <div className="flex gap-3">
+          <div className="flex flex-col sm:flex-row gap-3 justify-center md:justify-start">
             <button 
               onClick={isEditing ? handleSave : startEditing}
               disabled={isSaving}
-              className={`px-6 py-2 flex items-center gap-2 font-bold rounded-lg transition-all text-sm ${
+              className={`px-6 py-2.5 flex items-center justify-center gap-2 font-bold rounded-lg transition-all text-sm ${
                 isSaving 
                   ? 'bg-slate-100 text-slate-400 cursor-not-allowed' 
                   : 'bg-primary/10 text-primary hover:bg-primary/20'
@@ -439,7 +439,7 @@ export default function Settings({ onLogout }: SettingsProps) {
             {isEditing && !isSaving && (
               <button 
                 onClick={() => setIsEditing(false)}
-                className="px-6 py-2 bg-slate-100 text-slate-600 font-bold rounded-lg hover:bg-slate-200 transition-all text-sm"
+                className="px-6 py-2.5 bg-slate-100 text-slate-600 font-bold rounded-lg hover:bg-slate-200 transition-all text-sm"
               >
                 Cancel
               </button>
@@ -448,7 +448,7 @@ export default function Settings({ onLogout }: SettingsProps) {
         </div>
       </section>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6 md:gap-8">
         {/* Account Settings */}
         <div className="flex flex-col gap-4">
           <h3 className="text-lg font-bold flex items-center gap-2 px-2">
