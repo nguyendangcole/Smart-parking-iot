@@ -18,121 +18,63 @@ import {
   LogIn,
   LogOut
 } from 'lucide-react';
-import { useProfile } from '../../../shared/hooks/useProfile';
-import { operatorService } from '../../../shared/services/operatorService';
-import LostCardModal from './LostCardModal';
-import ManualEntryModal from './ManualEntryModal';
-import OverrideGateModal from './OverrideGateModal';
+import OperationsLog from './OperationsLog';
 
-export default function ManualHandling({ 
-  pendingAction,
-  clearPendingAction,
-  onReturnToDashboard
-}: {
-  pendingAction?: { type: 'lost_card' | 'manual_entry' | 'manual_exit' | 'override_gate' | 'manual_handling' | null; data?: any };
-  clearPendingAction?: () => void;
-  onReturnToDashboard?: () => void;
-}) {
-  const { profile } = useProfile();
-  
-  // Form State
+
+export default function ManualHandling() {
   const [searchQuery, setSearchQuery] = useState('');
-  const [plate, setPlate] = useState('');
-  const [studentId, setStudentId] = useState('');
-  const [reason, setReason] = useState('Lost RFID Card');
-  const [supervisorCode, setSupervisorCode] = useState('');
   
-  // Data State
-  const [manualRequests, setManualRequests] = useState<any[]>([]);
-  const [loading, setLoading] = useState(false);
-
-  // Modal States
-  const [showManualHandlingModal, setShowManualHandlingModal] = useState(false);
-  const [activeModalTab, setActiveModalTab] = useState<'lost_card' | 'manual_entry' | 'manual_exit' | 'override_gate'>('lost_card');
-  const [showHelpDocs, setShowHelpDocs] = useState(false);
-  const [manualActionType, setManualActionType] = useState<'entry' | 'exit'>('entry');
-  const [showLostCardModal, setShowLostCardModal] = useState(false);
-  const [showManualEntryModal, setShowManualEntryModal] = useState(false);
-  const [showOverrideModal, setShowOverrideModal] = useState(false);
-
-  // Fetch manual requests
-  useEffect(() => {
-    const fetchManualRequests = async () => {
-      if (!profile?.id) return;
-      
-      try {
-        const requests = await operatorService.getManualHandlingRequests(profile.id);
-        setManualRequests(requests);
-      } catch (error) {
-        console.error('Error fetching manual requests:', error);
-      }
-    };
-
-    fetchManualRequests();
-  }, [profile?.id]);
-
-  // Handler functions
-  const handleCreateLostCardRequest = async () => {
-    if (!profile?.id || !plate || !studentId) return;
-    
-    setLoading(true);
-    try {
-      await operatorService.createManualHandlingRequest({
-        operator_id: profile.id,
-        request_type: 'lost_card',
-        vehicle_plate: plate,
-        student_id: studentId,
-        reason: reason,
-        supervisor_code: supervisorCode
-      });
-      
-      // Refresh requests
-      const requests = await operatorService.getManualHandlingRequests(profile.id);
-      setManualRequests(requests);
-      
-      // Reset form
-      setPlate('');
-      setStudentId('');
-      setSupervisorCode('');
-      setShowLostCardModal(false);
-      
-    } catch (error) {
-      console.error('Error creating lost card request:', error);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handleCreateManualEntryRequest = async () => {
-    if (!profile?.id || !plate) return;
-    
-    setLoading(true);
-    try {
-      await operatorService.createManualHandlingRequest({
-        operator_id: profile.id,
-        request_type: manualActionType === 'entry' ? 'manual_entry' : 'manual_exit',
-        vehicle_plate: plate,
-        student_id: studentId,
-        reason: reason,
-        supervisor_code: supervisorCode
-      });
-      
-      // Refresh requests
-      const requests = await operatorService.getManualHandlingRequests(profile.id);
-      setManualRequests(requests);
-      
-      // Reset form
-      setPlate('');
-      setStudentId('');
-      setSupervisorCode('');
-      setShowManualEntryModal(false);
-      
-    } catch (error) {
-      console.error('Error creating manual entry request:', error);
-    } finally {
-      setLoading(false);
-    }
-  };
+  // Session data - Realistic University Parking Scenarios
+  const [sessions, setSessions] = useState([
+    { 
+      id: '1',
+      vehicle: '59P1-998.23', 
+      studentId: '2010884', 
+      entryTime: '08:45 AM', 
+      gate: 'Motorbike Entry Lane',
+      zone: 'Motorbike Lot',
+      status: 'LOST_CARD' as const,
+      type: 'bike' as const,
+      duration: '67 min',
+      fee: 20000,
+      paymentStatus: 'unpaid',
+      waitTime: '67 min',
+      priority: 'high' as const,
+      reason: 'Reported lost card during morning rush'
+    },
+    { 
+      id: '2',
+      vehicle: '51H-123.45', 
+      studentId: '2011256', 
+      entryTime: '09:12 AM', 
+      gate: 'Car Entry Lane',
+      zone: 'Car Lot',
+      status: 'SCAN_FAIL' as const,
+      type: 'car' as const,
+      duration: '23 min',
+      fee: 10000,
+      paymentStatus: 'unpaid',
+      waitTime: '23 min',
+      priority: 'medium' as const,
+      reason: 'Card reader malfunction - unable to scan'
+    },
+    { 
+      id: '3',
+      vehicle: '77K-456.12', 
+      studentId: '2010456', 
+      entryTime: '08:15 AM', 
+      gate: 'Car Entry Lane',
+      zone: 'Car Lot',
+      status: 'OVERSTAYED' as const,
+      type: 'car' as const,
+      duration: '120 min',
+      fee: 50000,
+      paymentStatus: 'unpaid',
+      waitTime: '34 min (waiting for payment)',
+      priority: 'medium' as const,
+      reason: 'Exceeded parking limit - overparking fine pending'
+    },
+  ]);
 
   // Activity Logging
   const [logs, setLogs] = useState([
@@ -257,23 +199,43 @@ export default function ManualHandling({
                         <td className="px-6 py-4">
                           <div className="space-y-1.5">
                             <div className={`inline-flex items-center gap-1.5 px-2 py-1 rounded-lg text-[10px] font-bold ${
-                              session.status === 'LOST_CARD' ? 'bg-red-100 text-red-600' : 'bg-blue-100 text-blue-600'
+                              session.status === 'LOST_CARD' ? 'bg-red-100 text-red-600' : session.status === 'SCAN_FAIL' ? 'bg-blue-100 text-blue-600' : 'bg-orange-100 text-orange-600'
                             }`}>
-                              <span className={`size-1.5 rounded-full ${session.status === 'LOST_CARD' ? 'bg-red-600' : 'bg-blue-600'}`}></span>
-                              {session.status === 'LOST_CARD' ? 'LOST CARD' : 'SCAN FAILED'}
+                              <span className={`size-1.5 rounded-full ${session.status === 'LOST_CARD' ? 'bg-red-600' : session.status === 'SCAN_FAIL' ? 'bg-blue-600' : 'bg-orange-600'}`}></span>
+                              {session.status === 'LOST_CARD' ? 'LOST CARD' : session.status === 'SCAN_FAIL' ? 'SCAN FAILED' : 'OVERSTAYED'}
                             </div>
-                            <p className={`text-xs font-bold ${session.priority === 'high' ? 'text-orange-600' : 'text-slate-500'}`}>
+                            <p className={`text-xs font-bold ${session.priority === 'high' ? 'text-red-600' : 'text-slate-500'}`}>
                               Wait: {session.waitTime}
                             </p>
+                            <p className="text-[10px] text-slate-400">{session.reason}</p>
                           </div>
                         </td>
                         <td className="px-6 py-4">
-                          <button 
-                            onClick={() => handleReleaseGate(session.vehicle, session.id)}
-                            className="text-primary font-bold text-sm hover:underline hover:text-primary/80 transition-colors"
-                          >
-                            {session.status === 'LOST_CARD' ? 'Release Gate' : 'Mark Paid'}
-                          </button>
+                          <div className="flex gap-2">
+                            <button 
+                              onClick={() => handleReleaseGate(session.vehicle, session.id)}
+                              className="px-3 py-1.5 bg-emerald-50 text-emerald-700 rounded text-xs font-bold hover:bg-emerald-100 transition-colors border border-emerald-200"
+                              title="Resolve case and release gate"
+                            >
+                              Resolve
+                            </button>
+                            {session.status === 'LOST_CARD' && (
+                              <button 
+                                onClick={() => alert(`Temporary pass issued for ${session.vehicle}. Valid for 7 days. Fee: ₫${session.fee.toLocaleString('vi-VN')}`)} 
+                                className="px-3 py-1.5 bg-blue-50 text-blue-700 rounded text-xs font-bold hover:bg-blue-100 transition-colors border border-blue-200"
+                                title="Issue temporary pass for lost card"
+                              >
+                              Temp Pass
+                              </button>
+                            )}
+                            <button 
+                              onClick={() => alert(`Case escalated for ${session.vehicle}. Supervisor notified. Fee: ₫${session.fee.toLocaleString('vi-VN')}`)} 
+                              className="px-3 py-1.5 bg-purple-50 text-purple-700 rounded text-xs font-bold hover:bg-purple-100 transition-colors border border-purple-200"
+                              title="Escalate to supervisor"
+                            >
+                              Escalate
+                            </button>
+                          </div>
                         </td>
                       </tr>
                     ))

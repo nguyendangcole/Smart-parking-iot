@@ -1,5 +1,5 @@
-import React, { useState, useEffect } from 'react';
-import { AlertCircle, Ban, DollarSign, TrendingDown } from 'lucide-react';
+import React from 'react';
+import { AlertCircle, Ban, DollarSign } from 'lucide-react';
 
 interface QuickStats {
   pendingExceptions: number;
@@ -9,27 +9,17 @@ interface QuickStats {
 }
 
 export default function QuickStatsPanel() {
-  const [stats, setStats] = useState<QuickStats>({
-    pendingExceptions: 3,
-    blockedVehicles: 1,
-    paymentPending: 5,
-    overparkedCount: 2
-  });
-
-  // Simulate real-time updates
-  useEffect(() => {
-    const interval = setInterval(() => {
-      // Randomly update stats to simulate real data
-      setStats(prev => ({
-        pendingExceptions: Math.max(0, prev.pendingExceptions + (Math.random() > 0.5 ? 1 : -1)),
-        blockedVehicles: Math.max(0, prev.blockedVehicles + (Math.random() > 0.7 ? 1 : 0)),
-        paymentPending: Math.max(0, prev.paymentPending + (Math.random() > 0.6 ? 1 : -1)),
-        overparkedCount: Math.max(0, prev.overparkedCount + (Math.random() > 0.8 ? 1 : 0))
-      }));
-    }, 15000);
-
-    return () => clearInterval(interval);
-  }, []);
+  // Realistic data based on actual ManualHandling cases:
+  // - 1 Lost Card (59P1-998.23) waiting 67 min
+  // - 1 Scan Fail (51H-123.45) waiting 23 min
+  // - 1 Overstayed (77K-456.12) waiting 34 min
+  // - Gate C (Car Entry) is offline = 1 blocked vehicle
+  const stats: QuickStats = {
+    pendingExceptions: 3,        // 3 manual handling cases
+    blockedVehicles: 1,          // Gate C offline
+    paymentPending: 3,           // All 3 cases need payment
+    overparkedCount: 1           // 1 overstayed case
+  };
 
   const hasUrgentItems = stats.pendingExceptions > 0 || stats.blockedVehicles > 0;
   const totalUrgent = stats.pendingExceptions + stats.blockedVehicles;
@@ -75,10 +65,11 @@ export default function QuickStatsPanel() {
 
           {totalUrgent > 0 && (
             <button
-              onClick={() => alert(`🔍 Opening Urgent Issues...\nPending: ${stats.pendingExceptions} | Blocked: ${stats.blockedVehicles}`)}
+              onClick={() => console.log(`View urgent issues: Pending Exceptions=${stats.pendingExceptions}, Blocked Vehicles=${stats.blockedVehicles}`)}
               className="w-full py-2 rounded bg-red-600 text-white font-bold text-sm hover:bg-red-700 transition-colors"
+              title="View pending exceptions and blocked vehicles in Manual Handling tab"
             >
-              Review All ({totalUrgent})
+              Review Urgent Cases ({totalUrgent})
             </button>
           )}
           {totalUrgent === 0 && (
@@ -119,8 +110,9 @@ export default function QuickStatsPanel() {
 
           {totalPaymentIssues > 0 && (
             <button
-              onClick={() => alert(`💰 Opening Payment Issues...\nPending: ${stats.paymentPending} | Overparked: ${stats.overparkedCount}`)}
+              onClick={() => console.log(`View payment issues: Pending=${stats.paymentPending}, Overparked=${stats.overparkedCount}`)}
               className="w-full py-2 rounded bg-amber-600 text-white font-bold text-sm hover:bg-amber-700 transition-colors"
+              title="View pending payment cases in Manual Handling tab"
             >
               Collect Payment ({totalPaymentIssues})
             </button>

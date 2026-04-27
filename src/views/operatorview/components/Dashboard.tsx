@@ -6,7 +6,6 @@ import {
 } from 'lucide-react';
 import { useProfile } from '../../../shared/hooks/useProfile';
 import { supabase } from '../../../shared/supabase';
-import { operatorService } from '../../../shared/services/operatorService';
 import LiveVehicles from './LiveVehicles';
 import OverrideGateModal from './OverrideGateModal';
 import LostCardModal from './LostCardModal';
@@ -36,20 +35,6 @@ export default function Dashboard({
 }) {
   const { profile } = useProfile();
 
-  // Helper function to calculate duration
-  const calculateDuration = (entryTime: string) => {
-    const entry = new Date(entryTime);
-    const now = new Date();
-    const diffMs = now.getTime() - entry.getTime();
-    const diffHours = Math.floor(diffMs / (1000 * 60 * 60));
-    const diffMins = Math.floor((diffMs % (1000 * 60 * 60)) / (1000 * 60));
-    
-    if (diffHours > 0) {
-      return `${diffHours}h ${diffMins}m`;
-    }
-    return `${diffMins}m`;
-  };
-
   // KPI Data
   const [totalSlots, setTotalSlots] = useState(0);
   const [occupiedSlots, setOccupiedSlots] = useState(0);
@@ -58,7 +43,6 @@ export default function Dashboard({
   // Occupied Slots Table
   const [occupiedList, setOccupiedList] = useState<any[]>([]);
   const [showOccupiedSlots, setShowOccupiedSlots] = useState(false);
-  const [showAllSlots, setShowAllSlots] = useState(false);
   
   // Card Stock & Transactions
   const CARD_STOCK_THRESHOLDS = {
@@ -115,70 +99,70 @@ export default function Dashboard({
   
   // Notification States
   const [showNotifications, setShowNotifications] = useState(false);
-  const [notifications, setNotifications] = useState<any[]>([]);
+  const [notifications, setNotifications] = useState([
+    {
+      id: '1',
+      type: 'alert',
+      title: 'Zone A - High Occupancy',
+      message: 'Zone A is now 85% full',
+      timestamp: new Date(Date.now() - 5 * 60000),
+      read: false
+    },
+    {
+      id: '2',
+      type: 'incident',
+      title: 'Gate 2 Offline',
+      message: 'Exit gate 2 connection lost - manual override may be needed',
+      timestamp: new Date(Date.now() - 15 * 60000),
+      read: false
+    },
+    {
+      id: '3',
+      type: 'info',
+      title: 'System Update',
+      message: 'Routine maintenance completed successfully',
+      timestamp: new Date(Date.now() - 2 * 3600000),
+      read: true
+    },
+  ]);
 
-  // Fetch data from backend
+  // Fetch dữ liệu thật
   const fetchData = async () => {
-    if (!profile?.id) return;
-    
     setLoading(true);
 
-    try {
-      // Get dashboard KPIs from backend
-      const kpis = await operatorService.getDashboardKPIs();
-      
-      setTotalSlots(kpis.totalSlots);
-      setOccupiedSlots(kpis.occupiedSlots);
-      setZones(kpis.zones);
+    // 1. Tổng số slot
+    const { count: total } = await supabase
+      .from('parking_slots')
+      .select('*', { count: 'exact', head: true });
 
-      // Get occupied slots data
-      const { data: occupiedSlotsData } = await supabase
-        .from('parking_sessions')
-        .select(`
-          id,
-          vehicle_plate,
-          entry_time,
-          parking_slots!inner(
-            slot_number,
-            zone
-          ),
-          profiles!inner(
-            full_name,
-            email
-          )
-        `)
-        .is('exit_time', null)
-        .order('entry_time', { ascending: false })
-        .limit(showAllSlots ? 50 : 10);
+    // 2. Số slot đang occupied
+    const { count: occupied } = await supabase
+      .from('parking_slots')
+      .select('*', { count: 'exact', head: true })
+      .eq('is_occupied', true);
 
-      if (occupiedSlotsData) {
-        setOccupiedList(occupiedSlotsData.map((session: any) => ({
-          id: session.id,
-          slotNumber: session.parking_slots[0]?.slot_number || 'N/A',
-          zone: session.parking_slots[0]?.zone || 'N/A',
-          plate: session.vehicle_plate,
-          entryTime: new Date(session.entry_time).toLocaleString('vi-VN'),
-          duration: calculateDuration(session.entry_time),
-          owner: session.profiles[0]?.full_name || 'Guest',
-          status: 'active'
-        })));
-      }
+    // 3. Zone summary
+    const { data: zoneData } = await supabase
+      .from('parking_slots')
+      .select('zone, is_occupied');
 
-      // Get notifications from backend
-      const notifications = await operatorService.getNotifications(profile.id);
-      setNotifications(notifications);
+    // 4. Danh sách slot đang đỗ
+    const { data: occupiedData } = await supabase
+      .from('parking_slots')
+      .select('slot_number, zone')
+      .eq('is_occupied', true);
 
-    } catch (error) {
-      console.error('Error fetching dashboard data:', error);
-    } finally {
-      setLoading(false);
-    }
+    setTotalSlots(total || 0);
+    setOccupiedSlots(occupied || 0);
+    setZones(zoneData || []);
+    setOccupiedList(occupiedData || []);
+    setLoading(false);
   };
 
-  // Auto-fetch on mount and set up realtime subscription
+  // Realtime: khi có xe vào/ra (bất kỳ slot nào thay đổi) → tự update
   useEffect(() => {
     fetchData();
-
+    
     // Initialize recent transactions
     setRecentTransactions([
       { id: 1, plate: 'AAA-0001', exitTime: '11:30 AM', cardType: 'Registered', vehicleType: 'Car', amount: '₫10,000', status: 'Paid' },
@@ -196,7 +180,7 @@ export default function Dashboard({
         'postgres_changes',
         { event: '*', schema: 'public', table: 'parking_slots' },
         () => {
-          fetchData();
+          fetchData(); // tự refresh ngay lập tức
         }
       )
       .subscribe();
@@ -205,7 +189,6 @@ export default function Dashboard({
       supabase.removeChannel(channel);
     };
   }, []);
-
 
   const occupancyRate = totalSlots > 0 ? Math.round((occupiedSlots / totalSlots) * 100) : 0;
   const occupiedByZone = zones.reduce<Record<string, number>>((acc, slot) => {
