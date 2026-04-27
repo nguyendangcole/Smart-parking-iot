@@ -7,9 +7,68 @@ import Settings from './components/Settings';
 import { motion, AnimatePresence } from 'motion/react';
 import { useProfile } from '../../shared/hooks/useProfile';
 
+interface Gate {
+  id: string;
+  name: string;
+  zone: string;
+  laneType: 'two-wheel' | 'four-wheel';
+  direction: 'entry' | 'exit';
+  status: 'Online' | 'Alert' | 'Offline';
+  img: string;
+  recTime?: string;
+  alert?: string;
+  lockState: 'open' | 'closed' | 'locked';
+}
+
 export default function OperatorApp() {
   const { profile, loading, fetchError } = useProfile();
   const [activeTab, setActiveTab] = useState('dashboard');
+  
+  // Shared Gate State - synced between Dashboard and GateControl
+  const [gates, setGates] = useState<Gate[]>([
+    { 
+      id: 'A', 
+      name: 'Motorbike Entry Lane', 
+      zone: 'Motorbike Lot', 
+      laneType: 'two-wheel',
+      direction: 'entry',
+      status: 'Online', 
+      img: 'https://picsum.photos/seed/gateA_live/600/400',
+      recTime: '10:45:22',
+      lockState: 'open'
+    },
+    { 
+      id: 'B', 
+      name: 'Motorbike Exit Lane', 
+      zone: 'Motorbike Lot', 
+      laneType: 'two-wheel',
+      direction: 'exit',
+      status: 'Alert', 
+      img: 'https://picsum.photos/seed/gateB_live/600/400',
+      alert: 'Obstruction Detected',
+      lockState: 'closed'
+    },
+    { 
+      id: 'C', 
+      name: 'Car Entry Lane', 
+      zone: 'Car Lot', 
+      laneType: 'four-wheel',
+      direction: 'entry',
+      status: 'Offline', 
+      img: '',
+      lockState: 'closed'
+    },
+    { 
+      id: 'D', 
+      name: 'Car Exit Lane', 
+      zone: 'Car Lot', 
+      laneType: 'four-wheel',
+      direction: 'exit',
+      status: 'Online', 
+      img: 'https://picsum.photos/seed/gateD_live/600/400',
+      lockState: 'open'
+    },
+  ]);
   
   // Manual Handling Action State
   const [pendingManualAction, setPendingManualAction] = useState<{
@@ -87,10 +146,11 @@ export default function OperatorApp() {
         return (
           <Dashboard 
             onManualAction={handleManualAction}
+            gates={gates}
           />
         );
       case 'gate-control':
-        return <GateControl />;
+        return <GateControl gates={gates} onGatesChange={setGates} />;
       case 'manual-handling':
         return (
           <ManualHandling 
@@ -102,7 +162,7 @@ export default function OperatorApp() {
       case 'settings':
         return <Settings />;
       default:
-        return <Dashboard onManualAction={handleManualAction} />;
+        return <Dashboard onManualAction={handleManualAction} gates={gates} />;
     }
   };
 

@@ -6,22 +6,19 @@ interface Vehicle {
   plate: string;
   entryTime: string;
   zone: string;
-  duration: string;
   status: 'active' | 'alert';
-  ticketId?: string;
+  cardType: 'registered' | 'temporary';
   cardId?: string;
 }
 
 interface LiveVehiclesProps {
   searchQuery: string;
   onSelectVehicle?: (vehicle: Vehicle) => void;
-  onManualHandling?: () => void;
 }
 
 export default function LiveVehicles({
   searchQuery,
-  onSelectVehicle,
-  onManualHandling
+  onSelectVehicle
 }: LiveVehiclesProps) {  // Track which vehicle menu is open
   const [openMenuId, setOpenMenuId] = useState<string | null>(null);
   const [selectedVehicleForAction, setSelectedVehicleForAction] = useState<Vehicle | null>(null);
@@ -32,9 +29,8 @@ export default function LiveVehicles({
       plate: 'AAA-0001',
       entryTime: '08:15 AM',
       zone: 'A',
-      duration: '2h 45m',
       status: 'active',
-      ticketId: 'TK-001234',
+      cardType: 'registered',
       cardId: 'CARD-567'
     },
     {
@@ -42,9 +38,8 @@ export default function LiveVehicles({
       plate: 'BBB-0002',
       entryTime: '09:30 AM',
       zone: 'B',
-      duration: '1h 30m',
       status: 'alert',
-      ticketId: 'TK-001235',
+      cardType: 'temporary',
       cardId: 'CARD-568'
     },
     {
@@ -52,9 +47,8 @@ export default function LiveVehicles({
       plate: 'CCC-0003',
       entryTime: '10:00 AM',
       zone: 'C',
-      duration: '1h',
       status: 'active',
-      ticketId: 'TK-001236',
+      cardType: 'registered',
       cardId: 'CARD-569'
     },
     {
@@ -62,9 +56,8 @@ export default function LiveVehicles({
       plate: 'DDD-0004',
       entryTime: '10:45 AM',
       zone: 'A',
-      duration: '15m',
       status: 'active',
-      ticketId: 'TK-001237',
+      cardType: 'temporary',
       cardId: 'CARD-570'
     },
   ]);
@@ -93,16 +86,6 @@ export default function LiveVehicles({
         </p>
       </div>
 
-      {/* Action Buttons */}
-      <div className="px-6 py-4 bg-slate-50 border-b border-slate-100 flex gap-2 flex-wrap">
-        <button
-          onClick={onManualHandling}
-          className="px-4 py-2 bg-gradient-to-r from-blue-500 to-purple-600 text-white text-xs font-semibold rounded-lg hover:from-blue-600 hover:to-purple-700 transition-all shadow-md shadow-blue-500/20"
-        >
-          ⚙️ Manual Handling
-        </button>
-      </div>
-
       {/* Table */}
       <div className="overflow-x-auto">
         <table className="w-full text-left">
@@ -111,10 +94,8 @@ export default function LiveVehicles({
               <th className="px-6 py-4">License Plate</th>
               <th className="px-6 py-4">Entry Time</th>
               <th className="px-6 py-4">Zone</th>
-              <th className="px-6 py-4">Duration</th>
-              <th className="px-6 py-4">Ticket ID</th>
-              <th className="px-6 py-4">Card ID</th>
               <th className="px-6 py-4">Status</th>
+              <th className="px-6 py-4">Card Type</th>
               <th className="px-6 py-4 text-right">Actions</th>
             </tr>
           </thead>
@@ -129,11 +110,6 @@ export default function LiveVehicles({
                   <td className="px-6 py-4 font-bold text-slate-800">{vehicle.plate}</td>
                   <td className="px-6 py-4 text-slate-600">{vehicle.entryTime}</td>
                   <td className="px-6 py-4 text-slate-600">Zone {vehicle.zone}</td>
-                  <td className="px-6 py-4 flex items-center gap-1.5 text-slate-600">
-                    <Clock size={14} /> {vehicle.duration}
-                  </td>
-                  <td className="px-6 py-4 text-slate-500 font-mono text-xs">{vehicle.ticketId}</td>
-                  <td className="px-6 py-4 text-slate-500 font-mono text-xs">{vehicle.cardId}</td>
                   <td className="px-6 py-4">
                     <span
                       className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold ${
@@ -144,6 +120,15 @@ export default function LiveVehicles({
                     >
                       {vehicle.status === 'alert' && <AlertCircle size={12} />}
                       {vehicle.status === 'active' ? 'Active' : 'Alert'}
+                    </span>
+                  </td>
+                  <td className="px-6 py-4">
+                    <span className={`inline-flex px-2.5 py-1 rounded-full text-xs font-semibold ${
+                      vehicle.cardType === 'registered'
+                        ? 'bg-blue-50 text-blue-700'
+                        : 'bg-purple-50 text-purple-700'
+                    }`}>
+                      {vehicle.cardType === 'registered' ? '👤 Registered' : '👤 Temporary'}
                     </span>
                   </td>
                   <td className="px-6 py-4 text-right relative">
@@ -209,7 +194,7 @@ export default function LiveVehicles({
               ))
             ) : (
               <tr>
-                <td colSpan={8} className="p-8 text-center text-slate-400">
+                <td colSpan={6} className="p-8 text-center text-slate-400">
                   {searchQuery ? `No vehicles match "${searchQuery}"` : 'No active vehicles'}
                 </td>
               </tr>

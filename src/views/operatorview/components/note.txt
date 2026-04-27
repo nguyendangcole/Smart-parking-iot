@@ -1,10 +1,2 @@
-Dashboard:
-live vehicles parking slots need a search bar, the search bar pull down from the top of the page.
-logic for unclear component
-linked to other part for manual intercept
-
-Gatecontrol:
-the all gates/ entracne/ exit need logic
-
-Manual Handling:
-adding help docs
+thẻ: quy định là thẻ sẽ tự động phát bằng máy - xử lý logic cho việc trả thẻ (quét).
+mainly focus cho các tính huống hệ thống không thể can thiệp: ví dụ mất thẻ khách, can thiệp khẩn cấp cổng...
