@@ -8,7 +8,7 @@ import {
   Building2,
   Clock
 } from 'lucide-react';
-import { motion } from 'motion/react';
+import { motion } from 'framer-motion';
 
 interface ExitPaymentProps {
   onBack: () => void;

@@ -85,7 +85,7 @@ Tạo lần lượt các user sau (mật khẩu đều là 123456) và nhớ tic
 -- Chạy đoạn này trong SQL Editor sau khi đã tạo tay các tài khoản xong
 -- ==============================================================================
 
-UPDATE public.profiles SET role = 'admin', full_name = 'Hệ Thống Admin' WHERE email = 'admin@hcmut.edu.vn';
+UPDATE public.profiles SET role = 'admin', full_name = 'System Admin' WHERE email = 'admin@hcmut.edu.vn';
 UPDATE public.profiles SET role = 'operator', full_name = 'Trực Tổng Đài' WHERE email = 'operator@hcmut.edu.vn';
 UPDATE public.profiles SET role = 'faculty', full_name = 'Giảng Viên B' WHERE email = 'giangvien@hcmut.edu.vn';
 UPDATE public.profiles SET role = 'staff', full_name = 'Trần Văn C' WHERE email = 'canbo@hcmut.edu.vn';

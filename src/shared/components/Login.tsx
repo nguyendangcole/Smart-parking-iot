@@ -13,15 +13,16 @@ import {
   EyeOff
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
-import { supabase } from '../../../shared/supabase';
+import { useNavigate } from 'react-router-dom';
+import { supabase } from '../supabase';
 import { User } from '@supabase/supabase-js';
 
 interface LoginProps {
-  onLogin: (user: User) => void;
-  onVisitor: () => void;
+  onLogin: () => void;
 }
 
-export default function Login({ onLogin, onVisitor }: LoginProps) {
+export default function Login({ onLogin }: LoginProps) {
+  const navigate = useNavigate();
   const [showSSOForm, setShowSSOForm] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [email, setEmail] = useState('');
@@ -48,10 +49,14 @@ export default function Login({ onLogin, onVisitor }: LoginProps) {
       if (authError) throw authError;
 
       if (data.user) {
-        onLogin(data.user);
+        onLogin();
       }
     } catch (err: any) {
-      console.error('Login error:', err);
+      console.error('🛠 [Login Debug] Error full:', err);
+      console.error('🛠 [Login Debug] Message:', err?.message);
+      console.error('🛠 [Login Debug] Status:', err?.status);
+      console.error('🛠 [Login Debug] Code:', err?.code);
+
       if (err.message === 'Invalid login credentials') {
         setError('Incorrect Email or Password.');
       } else {
@@ -73,8 +78,11 @@ export default function Login({ onLogin, onVisitor }: LoginProps) {
           <div className="absolute inset-0 bg-gradient-to-tr from-primary/90 to-transparent"></div>
         </div>
         <div className="relative z-10 p-16 flex flex-col justify-between h-full w-full">
-          <div className="flex items-center gap-3">
-            <div className="size-12 bg-white rounded-xl flex items-center justify-center shadow-lg">
+          <div 
+            onClick={() => navigate('/')}
+            className="flex items-center gap-3 cursor-pointer group hover:opacity-80 transition-opacity"
+          >
+            <div className="size-12 bg-white rounded-xl flex items-center justify-center shadow-lg group-hover:scale-105 transition-transform">
               <ParkingCircle size={32} className="text-primary" />
             </div>
             <span className="text-white text-2xl font-bold tracking-tight">HCMUT Smart Parking</span>
@@ -135,10 +143,12 @@ export default function Login({ onLogin, onVisitor }: LoginProps) {
                     <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
                       <Mail size={18} className="text-slate-400 group-focus-within:text-primary transition-colors" />
                     </div>
-                    <input
-                      type="email"
-                      required
-                      placeholder="email@hcmut.edu.vn"
+                      <input
+                        id="hcmut-email"
+                        name="email"
+                        type="email"
+                        required
+                        placeholder="email@hcmut.edu.vn"
                       value={email}
                       onChange={(e) => setEmail(e.target.value)}
                       className="w-full pl-11 pr-4 py-3.5 bg-slate-50 border border-slate-200 rounded-xl outline-none focus:ring-2 focus:ring-primary/10 focus:border-primary transition-all text-slate-800"
@@ -152,10 +162,12 @@ export default function Login({ onLogin, onVisitor }: LoginProps) {
                     <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
                       <Lock size={18} className="text-slate-400 group-focus-within:text-primary transition-colors" />
                     </div>
-                    <input
-                      type={showPassword ? "text" : "password"}
-                      required
-                      placeholder="Enter password"
+                      <input
+                        id="hcmut-password"
+                        name="password"
+                        type={showPassword ? "text" : "password"}
+                        required
+                        placeholder="Enter password"
                       value={password}
                       onChange={(e) => setPassword(e.target.value)}
                       className="w-full pl-11 pr-12 py-3.5 bg-slate-50 border border-slate-200 rounded-xl outline-none focus:ring-2 focus:ring-primary/10 focus:border-primary transition-all text-slate-800"
@@ -207,7 +219,7 @@ export default function Login({ onLogin, onVisitor }: LoginProps) {
           </div>
 
           <button
-            onClick={onVisitor}
+            onClick={() => navigate('/visitor')}
             className="w-full group cursor-pointer bg-slate-50 hover:bg-slate-100 border border-slate-200 p-6 rounded-2xl transition-all text-left"
           >
             <div className="flex items-center justify-between">

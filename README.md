@@ -33,7 +33,7 @@ Trước khi bắt đầu, đảm bảo bạn đã cài đặt:
    ```
 
 2. **Cài đặt các thư viện cần thiết:**
-   ```bash
+   ```bash\
    npm install
    ```
 
@@ -82,6 +82,10 @@ Hệ thống phân quyền dựa trên Email domain `@hcmut.edu.vn` và Metadata
 | **Visitor** | Tự do | Member View (Hạn chế) |
 | **Parking Operator** | `@hcmut.edu.vn` | Operator View |
 | **System Admin** | `@hcmut.edu.vn` | Admin View |
+
+
+
+
 
 ### 🚀 Thiết lập Database
 

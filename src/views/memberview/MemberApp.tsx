@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { Screen } from './types';
 import Sidebar from './components/Sidebar';
 import Dashboard from './screens/Dashboard';
@@ -6,7 +6,6 @@ import History from './screens/History';
 import Payments from './screens/Payments';
 import Settings from './screens/Settings';
 import Support from './screens/Support';
-import Login from './screens/Login';
 import ExitPayment from './screens/ExitPayment';
 
 import { useNavigate } from 'react-router-dom';
@@ -15,38 +14,8 @@ import { useProfile } from '../../shared/hooks/useProfile';
 
 export default function MemberApp() {
   const { profile, loading, fetchError } = useProfile();
-  const [currentScreen, setCurrentScreen] = useState<Screen>('login');
-  const [isVisitor, setIsVisitor] = useState(false);
+  const [currentScreen, setCurrentScreen] = useState<Screen>('dashboard');
   const navigate = useNavigate();
-
-  useEffect(() => {
-    if (!loading && profile) {
-      if (profile.role === 'admin') {
-        window.location.href = '/admin';
-      } else if (profile.role === 'operator') {
-        window.location.href = '/operator';
-      } else {
-        setCurrentScreen('dashboard');
-      }
-    }
-  }, [profile, loading]);
-
-  const handlePostLogin = async (user: any) => {
-    // This is called from Login component right after signing in
-    const { data: profile } = await supabase
-      .from('profiles')
-      .select('role')
-      .eq('id', user.id)
-      .single();
-
-    if (profile?.role === 'admin') {
-      window.location.href = '/admin';
-    } else if (profile?.role === 'operator') {
-      window.location.href = '/operator';
-    } else {
-      setCurrentScreen('dashboard');
-    }
-  };
 
   if (fetchError) {
     return (
@@ -80,14 +49,10 @@ export default function MemberApp() {
     );
   }
 
-  if (currentScreen === 'login') {
-    return <Login onLogin={handlePostLogin} onVisitor={() => setCurrentScreen('exit')} />;
-  }
-
   if (currentScreen === 'exit') {
     return (
       <div className="min-h-screen bg-background-light p-8 overflow-y-auto">
-        <ExitPayment onBack={() => setCurrentScreen('login')} />
+        <ExitPayment onBack={() => setCurrentScreen('dashboard')} />
       </div>
     );
   }
@@ -97,14 +62,15 @@ export default function MemberApp() {
       <Sidebar currentScreen={currentScreen} onNavigate={setCurrentScreen} />
 
       <main className="ml-72 flex-1 p-8 min-h-screen overflow-y-auto">
-        {currentScreen === 'dashboard' && <Dashboard />}
+        {currentScreen === 'dashboard' && <Dashboard onNavigate={setCurrentScreen} />}
         {currentScreen === 'history' && <History />}
         {currentScreen === 'payments' && <Payments />}
         {currentScreen === 'support' && <Support />}
         {currentScreen === 'settings' && (
           <Settings
-            onLogout={() => {
-              setCurrentScreen('login');
+            onLogout={async () => {
+              const { error } = await supabase.auth.signOut();
+              if (!error) navigate('/');
             }}
           />
         )}

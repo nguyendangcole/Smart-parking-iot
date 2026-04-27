@@ -46,7 +46,7 @@ export default function Sidebar({ currentScreen, onNavigate }: SidebarProps) {
           {navItems.map((item) => (
             <button
               key={item.id}
-              onClick={() => item.id !== 'support' && onNavigate(item.id as Screen)}
+              onClick={() => onNavigate(item.id as Screen)}
               className={currentScreen === item.id ? "sidebar-link-active w-full text-left" : "sidebar-link w-full text-left"}
             >
               <item.icon size={20} />
@@ -60,7 +60,14 @@ export default function Sidebar({ currentScreen, onNavigate }: SidebarProps) {
       <div className="bg-slate-100 rounded-2xl p-4">
         <div className="flex items-center gap-3">
           <div className="size-10 rounded-full bg-primary/10 flex items-center justify-center text-primary overflow-hidden">
-            {profile?.full_name ? (
+            {profile?.avatar_url ? (
+              <img
+                className="w-full h-full object-cover"
+                src={profile.avatar_url}
+                alt={profile.full_name || 'User'}
+                referrerPolicy="no-referrer"
+              />
+            ) : profile?.full_name ? (
               <span className="font-bold text-sm tracking-tighter">
                 {profile.full_name.split(' ').map(n => n[0]).join('').toUpperCase()}
               </span>

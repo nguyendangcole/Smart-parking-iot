@@ -1,20 +1,41 @@
-@import "tailwindcss";
 @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&family=Public+Sans:wght@300;400;500;600;700&display=swap');
+@import "tailwindcss";
 
 @theme {
   --font-sans: "Plus Jakarta Sans", ui-sans-serif, system-ui, sans-serif;
   --font-display: "Plus Jakarta Sans", sans-serif;
   --font-public: "Public Sans", sans-serif;
-  
+
   --color-primary: #0054a3;
+  --color-on-primary: #edf3ff;
   --color-primary-dark: #003a70;
+  --color-primary-container: #7bb5f5;
   --color-accent-orange: #ec5b13;
   --color-accent-cyan: #00b4d8;
   --color-background-light: #f8fafc;
   --color-background-dark: #0f1923;
+  
+  --color-secondary-container: #b7d3ff;
+  --color-on-secondary-container: #264973;
+  --color-on-surface-variant: #585c5e;
+  
+  --color-surface-container-low: #edf1f3;
+  --color-surface-container-lowest: #ffffff;
+  --color-surface-container-high: #dee3e6;
+  --color-surface-container-highest: #d8dee1;
+
+  --font-headline: "Plus Jakarta Sans", sans-serif;
+}
+
+.admin-theme {
+  --color-primary: #ec5b13;
+  --color-primary-dark: #c5480d;
 }
 
 @layer base {
+  html {
+    scroll-behavior: smooth;
+  }
   body {
     @apply bg-background-light text-slate-900 font-sans antialiased;
   }
@@ -24,11 +45,11 @@
   .glass {
     @apply bg-white/70 backdrop-blur-xl border border-white/30;
   }
-  
+
   .sidebar-link {
     @apply flex items-center gap-3 px-4 py-3 text-slate-500 hover:bg-slate-100 hover:text-primary transition-all rounded-xl font-semibold text-sm;
   }
-  
+
   .sidebar-link-active {
     @apply flex items-center gap-3 px-4 py-3 bg-primary text-white rounded-xl shadow-md shadow-primary/20 font-semibold text-sm;
   }
@@ -36,6 +57,9 @@
 
 .material-symbols-outlined {
   font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+  display: inline-block;
+  vertical-align: middle;
+  line-height: 1;
 }
 
 .filled-icon {
@@ -49,6 +73,41 @@
 }
 
 @keyframes marquee {
-  0% { transform: translateX(100%); }
-  100% { transform: translateX(-100%); }
+  0% {
+    transform: translateX(100%);
+  }
+
+  100% {
+    transform: translateX(-100%);
+  }
+}
+
+@layer utilities {
+  .animate-marquee-fast {
+    animation: marquee-fast 10s linear infinite;
+  }
+}
+
+@keyframes marquee-fast {
+  0% {
+    transform: translateX(0%);
+  }
+
+  100% {
+    transform: translateX(-50%);
+  }
+}
+
+@layer utilities {
+  .text-gradient {
+    background: linear-gradient(135deg, #0054a3 0%, #00b4d8 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+  }
+  
+  .glass-panel {
+    background: rgba(255, 255, 255, 0.7);
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+  }
 }

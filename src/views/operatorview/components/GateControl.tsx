@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { 
   Search, 
   Bell, 
@@ -16,10 +16,12 @@ import {
   Unlock,
   X
 } from 'lucide-react';
+import { useProfile } from '../../../shared/hooks/useProfile';
+import { operatorService, GateAction } from '../../../shared/services/operatorService';
 import GateActionModal from './GateActionModal';
 import ActionFeedback from './ActionFeedback';
 
-interface Gate {
+interface LocalGate {
   id: string;
   name: string;
   zone: string;
@@ -48,6 +50,20 @@ interface Feedback {
   timestamp: string;
 }
 
+// Helper function to get gate camera image
+const getGateImage = (gateName: string, gateId: string) => {
+  const imageMap: Record<string, string> = {
+    'Main Entrance Gate': 'https://picsum.photos/seed/gateA_live/600/400',
+    'North Exit Gate': 'https://picsum.photos/seed/gateB_live/600/400',
+    'South Entry Gate': 'https://picsum.photos/seed/gateC_live/600/400',
+    'Emergency Exit Gate': 'https://picsum.photos/seed/gateD_live/600/400',
+    'Staff Parking Gate': 'https://picsum.photos/seed/gateE_live/600/400',
+    'Visitor Parking Gate': 'https://picsum.photos/seed/gateF_live/600/400'
+  };
+  
+  return imageMap[gateName] || `https://picsum.photos/seed/${gateId}_live/600/400`;
+};
+
 interface GateControlProps {
   gates?: Gate[];
   onGatesChange?: (gates: Gate[]) => void;
@@ -55,7 +71,7 @@ interface GateControlProps {
 
 export default function GateControl({ gates: externalGates, onGatesChange }: GateControlProps) {
   // Use external gates if provided (from parent), otherwise maintain local state (fallback)
-  const [localGates, setLocalGates] = useState<Gate[]>([
+  const [localGates, setLocalGates] = useState<LocalGate[]>([
     { 
       id: 'A', 
       name: 'Motorbike Entry Lane', 
@@ -114,7 +130,7 @@ export default function GateControl({ gates: externalGates, onGatesChange }: Gat
   // Modal & Feedback State
   const [showModal, setShowModal] = useState(false);
   const [showClearConfirm, setShowClearConfirm] = useState(false);
-  const [selectedGate, setSelectedGate] = useState<Gate | null>(null);
+  const [selectedGate, setSelectedGate] = useState<LocalGate | null>(null);
   const [actionType, setActionType] = useState<'open' | 'close' | 'emergency_lock'>('open');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [feedback, setFeedback] = useState<Feedback | null>(null);
@@ -136,7 +152,7 @@ export default function GateControl({ gates: externalGates, onGatesChange }: Gat
     return gates;
   };
 
-  const handleActionClick = (gate: Gate, type: 'open' | 'close' | 'emergency_lock') => {
+  const handleActionClick = (gate: LocalGate, type: 'open' | 'close' | 'emergency_lock') => {
     if (gate.status === 'Offline') {
       setFeedback({
         type: 'error',
@@ -171,7 +187,7 @@ export default function GateControl({ gates: externalGates, onGatesChange }: Gat
   };
 
   const handleConfirmAction = async (reason: string) => {
-    if (!selectedGate) return;
+    if (!selectedGate || !profile?.id) return;
 
     setIsSubmitting(true);
     setFeedback({
@@ -182,21 +198,28 @@ export default function GateControl({ gates: externalGates, onGatesChange }: Gat
       timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
     });
 
-    // Simulate API call
-    setTimeout(() => {
-      // Update gate state
-      setGates(prev =>
-        prev.map(g => {
-          if (g.id === selectedGate.id) {
-            let newLockState = g.lockState;
-            if (actionType === 'open') newLockState = 'open';
-            else if (actionType === 'close') newLockState = 'closed';
-            else if (actionType === 'emergency_lock') newLockState = 'locked';
-            return { ...g, lockState: newLockState };
-          }
-          return g;
-        })
-      );
+    try {
+      // Call backend service
+      const actionMap = {
+        'open': 'open' as const,
+        'close': 'close' as const,
+        'emergency_lock': 'lock' as const
+      };
+      
+      await operatorService.controlGate(selectedGate.id, actionMap[actionType], reason);
+      
+      // Refresh gates data
+      const gatesData = await operatorService.getGates();
+      setGates(gatesData.map(gate => ({
+        id: gate.id,
+        name: gate.gate_name,
+        zone: gate.zone,
+        status: gate.status.charAt(0).toUpperCase() + gate.status.slice(1) as 'Online' | 'Alert' | 'Offline',
+        img: gate.camera_url || getGateImage(gate.gate_name, gate.id),
+        recTime: gate.last_heartbeat ? new Date(gate.last_heartbeat).toLocaleTimeString() : undefined,
+        alert: gate.status === 'alert' ? 'Connection unstable' : undefined,
+        lockState: gate.lock_state
+      })));
 
       // Add to history
       const actionLabels = {
@@ -224,10 +247,20 @@ export default function GateControl({ gates: externalGates, onGatesChange }: Gat
         timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
       });
 
+    } catch (error) {
+      console.error('Error controlling gate:', error);
+      setFeedback({
+        type: 'error',
+        message: 'Failed to control gate. Please try again.',
+        action: actionType,
+        gateName: selectedGate.name,
+        timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+      });
+    } finally {
       setIsSubmitting(false);
       setShowModal(false);
       setSelectedGate(null);
-    }, 1500);
+    }
   };
 
   const handleClearHistory = () => {
