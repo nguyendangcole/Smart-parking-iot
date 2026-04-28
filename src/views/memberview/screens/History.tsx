@@ -251,14 +251,14 @@ export default function History() {
     <motion.div
       initial={{ opacity: 0, x: 20 }}
       animate={{ opacity: 1, x: 0 }}
-      className="max-w-6xl mx-auto flex flex-col gap-8"
+      className="max-w-6xl mx-auto flex flex-col gap-6 md:gap-8"
     >
-      <div className="flex flex-col md:flex-row md:items-end justify-between gap-6">
-        <div className="flex flex-col gap-2">
-          <h1 className="text-4xl font-extrabold tracking-tight text-slate-900">Parking History</h1>
-          <p className="text-slate-500">Review your past parking sessions and manage receipts.</p>
+      <div className="flex flex-col md:flex-row md:items-end justify-between gap-4 md:gap-6">
+        <div className="flex flex-col gap-1.5 md:gap-2">
+          <h1 className="text-2xl sm:text-3xl md:text-4xl font-extrabold tracking-tight text-slate-900">Parking History</h1>
+          <p className="text-sm sm:text-base text-slate-500">Review your past parking sessions and manage receipts.</p>
         </div>
-        <div className="flex flex-wrap items-center gap-3">
+        <div className="flex flex-wrap items-center gap-2 sm:gap-3">
           <div className="relative w-full md:w-64">
             <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 size-5" />
             <input
@@ -369,7 +369,11 @@ export default function History() {
       </div>
 
       <div className="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden min-h-[400px]">
-        <div className="overflow-x-auto">
+        {/* Desktop / tablet: 7-column table. Mobile (<md): switched to a
+            stacked card list because the table requires horizontal
+            scrolling that hides important columns (status, actions) and
+            isn't practical to scan on a phone. */}
+        <div className="hidden md:block overflow-x-auto">
           <table className="w-full text-left border-collapse">
             <thead>
               <tr className="border-b border-slate-100 bg-slate-50/50">
@@ -503,14 +507,128 @@ export default function History() {
           </table>
         </div>
 
+        <div className="md:hidden">
+          {loading ? (
+            <div className="flex flex-col items-center gap-3 py-16 px-6">
+              <Loader2 className="animate-spin text-primary size-8" />
+              <p className="text-slate-400 text-sm font-medium">Fetching your parking story...</p>
+            </div>
+          ) : sessions.length === 0 ? (
+            <div className="flex flex-col items-center gap-2 py-16 px-6 text-center">
+              <Clock className="text-slate-200 size-12" />
+              <p className="text-slate-500 font-bold">No sessions found</p>
+              <p className="text-slate-400 text-xs">Try adjusting your filters or search term.</p>
+            </div>
+          ) : (
+            <ul className="divide-y divide-slate-100">
+              <AnimatePresence mode="wait">
+                {sessions.map((session) => {
+                  const statusKey = normalizeStatus(session.status);
+                  const isOngoing = statusKey === 'Ongoing';
+                  const isCompleted = statusKey === 'Completed';
+                  const isCancelled = statusKey === 'Cancelled';
+                  const isDownloading = downloadingId === session.id;
+                  const disabled = !isCompleted || isDownloading || (!!downloadingId && !isDownloading);
+
+                  return (
+                    <motion.li
+                      key={session.id}
+                      initial={{ opacity: 0 }}
+                      animate={{ opacity: 1 }}
+                      className="p-4 sm:p-5 flex flex-col gap-3"
+                    >
+                      <div className="flex items-start justify-between gap-2">
+                        <div className="min-w-0">
+                          <p className="text-sm font-bold text-slate-800">
+                            {new Date(session.entry_time).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' })}
+                          </p>
+                          <p className="text-xs text-slate-400 mt-0.5">
+                            {new Date(session.entry_time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                            {session.exit_time ? ` - ${new Date(session.exit_time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}` : ' - Now'}
+                          </p>
+                        </div>
+                        <span className={`shrink-0 inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider ${
+                          isCompleted ? 'bg-green-100 text-green-700' :
+                          isOngoing ? 'bg-blue-100 text-blue-700' :
+                          isCancelled ? 'bg-red-100 text-red-700' :
+                          'bg-slate-100 text-slate-500'
+                        }`}>
+                          <span className={`size-1.5 rounded-full ${
+                            isCompleted ? 'bg-green-500' :
+                            isOngoing ? 'bg-blue-500' :
+                            isCancelled ? 'bg-red-500' :
+                            'bg-slate-400'
+                          }`}></span>
+                          {statusKey === 'Unknown' ? (session.status || 'N/A') : statusKey}
+                        </span>
+                      </div>
+
+                      <div className="flex items-center justify-between gap-2 flex-wrap">
+                        <span className="text-xs font-semibold bg-slate-100 px-2.5 py-1 rounded-lg border border-slate-200">{session.vehicle_plate}</span>
+                        <span className="text-xs font-medium flex items-center gap-1 text-slate-600">
+                          <MapPin size={12} className="text-slate-400" />
+                          {session.zone_name}
+                        </span>
+                      </div>
+
+                      <div className="flex items-center justify-between gap-2 pt-2 border-t border-slate-100">
+                        <div className="flex flex-col">
+                          <span className="text-[10px] uppercase tracking-wider text-slate-400 font-bold">Duration</span>
+                          <span className="text-xs font-medium text-slate-600">{formatDuration(session.entry_time, session.exit_time)}</span>
+                        </div>
+                        <div className="flex flex-col items-center">
+                          <span className="text-[10px] uppercase tracking-wider text-slate-400 font-bold">Cost</span>
+                          <span className={`text-sm font-bold ${isOngoing ? 'text-primary' : 'text-slate-700'}`}>
+                            {session.fee === 0 ? '0 VND' : `${(session.fee || 0).toLocaleString()} VND`}
+                          </span>
+                        </div>
+                        <button
+                          disabled={disabled}
+                          onClick={() => handleDownloadReceipt(session)}
+                          title={
+                            !isCompleted
+                              ? 'Receipt available after the session is completed'
+                              : 'Download PDF receipt'
+                          }
+                          className={`text-xs font-bold flex items-center gap-1.5 px-3 py-1.5 rounded-lg transition-all shrink-0 ${
+                            !isCompleted
+                              ? 'text-slate-300 cursor-not-allowed'
+                              : isDownloading
+                                ? 'text-primary bg-primary/10 cursor-wait'
+                                : disabled
+                                  ? 'text-slate-400 bg-slate-50 cursor-not-allowed'
+                                  : 'text-primary bg-primary/5 hover:bg-primary/10'
+                          }`}
+                        >
+                          {isDownloading ? (
+                            <>
+                              <Loader2 size={14} className="animate-spin" />
+                              Preparing...
+                            </>
+                          ) : (
+                            <>
+                              <Download size={14} />
+                              Receipt
+                            </>
+                          )}
+                        </button>
+                      </div>
+                    </motion.li>
+                  );
+                })}
+              </AnimatePresence>
+            </ul>
+          )}
+        </div>
+
         {/* Pagination Footer */}
-        <div className="px-6 py-4 border-t border-slate-100 flex flex-col sm:flex-row items-center justify-between gap-4 bg-slate-50/30">
-          <div className="flex items-center gap-4">
-            <p className="text-sm text-slate-500 font-medium">
+        <div className="px-4 sm:px-6 py-4 border-t border-slate-100 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 sm:gap-4 bg-slate-50/30">
+          <div className="flex items-center gap-3 sm:gap-4 flex-wrap w-full sm:w-auto">
+            <p className="text-xs sm:text-sm text-slate-500 font-medium">
               Showing {totalCount === 0 ? 0 : (currentPage - 1) * itemsPerPage + 1} to {Math.min(currentPage * itemsPerPage, totalCount)} of {totalCount} entries
             </p>
             <div className="flex items-center gap-2">
-              <span className="text-sm text-slate-500 font-medium">Rows:</span>
+              <span className="text-xs sm:text-sm text-slate-500 font-medium">Rows:</span>
               <select
                 value={itemsPerPage}
                 onChange={(e) => {
@@ -525,7 +643,7 @@ export default function History() {
               </select>
             </div>
           </div>
-          <div className="flex gap-2">
+          <div className="flex gap-2 w-full sm:w-auto justify-end">
             <button
               onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
               disabled={currentPage === 1 || loading}
@@ -533,7 +651,7 @@ export default function History() {
             >
               <ChevronLeft size={18} />
             </button>
-            <div className="flex items-center px-3 text-sm font-bold text-slate-600">
+            <div className="flex items-center px-3 text-xs sm:text-sm font-bold text-slate-600">
               Page {currentPage} of {totalPages}
             </div>
             <button
@@ -548,29 +666,29 @@ export default function History() {
       </div>
 
       {/* Stats Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-        <div className="bg-primary group p-6 rounded-3xl shadow-xl shadow-primary/20 transition-all hover:-translate-y-1">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-6">
+        <div className="bg-primary group p-5 sm:p-6 rounded-3xl shadow-xl shadow-primary/20 transition-all hover:-translate-y-1 sm:col-span-2 lg:col-span-1">
           <div className="flex justify-between items-start mb-4">
             <div className="p-2 bg-white/20 rounded-xl text-white">
               <CreditCard size={20} />
             </div>
           </div>
           <p className="text-white/70 text-xs font-bold uppercase tracking-wider mb-1">Total Spent this Month</p>
-          <h3 className="text-3xl font-black text-white">{stats.totalSpent.toLocaleString()} VND</h3>
+          <h3 className="text-2xl sm:text-3xl font-black text-white break-words">{stats.totalSpent.toLocaleString()} VND</h3>
         </div>
-        <div className="bg-white border border-slate-100 p-6 rounded-3xl shadow-sm hover:shadow-md transition-all">
+        <div className="bg-white border border-slate-100 p-5 sm:p-6 rounded-3xl shadow-sm hover:shadow-md transition-all">
           <div className="p-2 bg-slate-100 rounded-xl text-slate-600 w-fit mb-4">
             <Clock size={20} />
           </div>
           <p className="text-slate-500 text-xs font-bold uppercase tracking-wider mb-1">Total Hours Parked</p>
-          <h3 className="text-3xl font-black text-slate-800">{stats.totalHours}h</h3>
+          <h3 className="text-2xl sm:text-3xl font-black text-slate-800">{stats.totalHours}h</h3>
         </div>
-        <div className="bg-white border border-slate-100 p-6 rounded-3xl shadow-sm hover:shadow-md transition-all">
+        <div className="bg-white border border-slate-100 p-5 sm:p-6 rounded-3xl shadow-sm hover:shadow-md transition-all">
           <div className="p-2 bg-slate-100 rounded-xl text-slate-600 w-fit mb-4">
             <MapPin size={20} />
           </div>
           <p className="text-slate-500 text-xs font-bold uppercase tracking-wider mb-1">Most Visited Zone</p>
-          <h3 className="text-3xl font-black text-slate-800">{stats.mostVisitedZone}</h3>
+          <h3 className="text-2xl sm:text-3xl font-black text-slate-800 truncate">{stats.mostVisitedZone}</h3>
         </div>
       </div>
     </motion.div>

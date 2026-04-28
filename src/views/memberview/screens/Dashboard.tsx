@@ -701,21 +701,21 @@ export default function Dashboard({ onNavigate }: DashboardProps) {
     <motion.div
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
-      className="space-y-8"
+      className="space-y-6 md:space-y-8"
     >
       {/* Topbar */}
-      <header className="flex items-center justify-between">
-        <div>
-          <h2 className="text-3xl font-extrabold tracking-tight text-slate-900">
+      <header className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+        <div className="min-w-0">
+          <h2 className="text-2xl sm:text-3xl font-extrabold tracking-tight text-slate-900">
             {new Date().getHours() < 12 ? 'Good morning' : new Date().getHours() < 18 ? 'Good afternoon' : 'Good evening'}, {profile?.full_name?.split(' ')[0] || 'Member'}! 👋
           </h2>
-          <p className="text-slate-500 font-medium">Here's what's happening with your parking today.</p>
+          <p className="text-sm sm:text-base text-slate-500 font-medium">Here's what's happening with your parking today.</p>
         </div>
-        <div className="flex items-center gap-4">
+        <div className="flex items-center gap-3 sm:gap-4 flex-wrap">
           <div className="relative" ref={notificationRef}>
             <button 
               onClick={() => setShowNotifications(!showNotifications)}
-              className="size-12 rounded-2xl glass flex items-center justify-center text-slate-600 hover:bg-white hover:text-primary transition-all border border-slate-200 relative"
+              className="size-11 sm:size-12 rounded-2xl glass flex items-center justify-center text-slate-600 hover:bg-white hover:text-primary transition-all border border-slate-200 relative"
             >
               <Bell size={20} />
               {notifications.some(n => n.unread) && (
@@ -724,7 +724,7 @@ export default function Dashboard({ onNavigate }: DashboardProps) {
             </button>
             
             {showNotifications && (
-              <div className="absolute top-full mt-2 right-0 bg-white border border-slate-200 shadow-xl rounded-2xl p-4 z-50 w-80">
+              <div className="absolute top-full mt-2 right-0 bg-white border border-slate-200 shadow-xl rounded-2xl p-4 z-50 w-80 max-w-[calc(100vw-2rem)]">
                 <div className="flex justify-between items-center mb-4">
                   <h3 className="font-bold text-slate-800">Notifications</h3>
                   <button 
@@ -757,14 +757,14 @@ export default function Dashboard({ onNavigate }: DashboardProps) {
           <div className="relative" ref={calendarRef}>
             <button 
               onClick={() => setShowCalendar(!showCalendar)}
-              className="flex items-center gap-2 px-5 py-3 rounded-2xl bg-white border border-slate-200 shadow-sm hover:shadow-md transition-all"
+              className="flex items-center gap-2 px-4 sm:px-5 py-2.5 sm:py-3 rounded-2xl bg-white border border-slate-200 shadow-sm hover:shadow-md transition-all"
             >
               <Calendar size={18} className="text-primary" />
               <span className="text-sm font-bold text-slate-700">{displayDate}</span>
             </button>
 
             {showCalendar && (
-              <div className="absolute top-full mt-2 right-0 bg-white border border-slate-200 shadow-xl rounded-2xl p-4 z-50 w-72">
+              <div className="absolute top-full mt-2 right-0 bg-white border border-slate-200 shadow-xl rounded-2xl p-4 z-50 w-72 max-w-[calc(100vw-2rem)]">
                 <div className="flex justify-between items-center mb-4">
                   <button onClick={handlePrevMonth} className="text-slate-400 hover:text-primary p-1">&lt;</button>
                   <span className="font-bold text-sm text-slate-700">
@@ -822,7 +822,7 @@ export default function Dashboard({ onNavigate }: DashboardProps) {
       </header>
 
       {/* KPI Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-6">
         {/* Balance Card */}
         {(() => {
           const balance = Number(profile?.balance) || 0;
@@ -858,11 +858,11 @@ export default function Dashboard({ onNavigate }: DashboardProps) {
           }
 
           return (
-            <div className="relative overflow-hidden p-6 rounded-2xl bg-gradient-to-br from-primary to-indigo-600 text-white shadow-xl shadow-primary/20">
+            <div className="relative overflow-hidden p-5 sm:p-6 rounded-2xl bg-gradient-to-br from-primary to-indigo-600 text-white shadow-xl shadow-primary/20">
               <div className="relative z-10">
                 <p className="text-blue-100 text-xs font-bold uppercase tracking-wider mb-1">Current Balance</p>
-                <h3 className="text-3xl font-black mb-4 tabular-nums">
-                  {balance.toLocaleString()} <span className="text-lg font-medium">VND</span>
+                <h3 className="text-2xl sm:text-3xl font-black mb-4 tabular-nums">
+                  {balance.toLocaleString()} <span className="text-base sm:text-lg font-medium">VND</span>
                 </h3>
                 <div className={`flex items-center gap-2 ${badgeClasses} backdrop-blur-md w-fit px-3 py-1 rounded-full text-xs font-bold`}>
                   <TrendIcon size={14} />
@@ -883,12 +883,12 @@ export default function Dashboard({ onNavigate }: DashboardProps) {
         {/* `overflow-hidden` is intentionally NOT set on the card so the
             rank-table popover anchored to the Star button can extend below
             the card without being clipped. */}
-        <div className="p-6 rounded-2xl bg-white border border-slate-200 shadow-sm relative">
+        <div className="p-5 sm:p-6 rounded-2xl bg-white border border-slate-200 shadow-sm relative">
           <div className="flex justify-between items-start mb-4">
             <div>
               <p className="text-slate-400 text-xs font-bold uppercase tracking-wider mb-1">Total Rewards</p>
-              <h3 className="text-3xl font-black text-slate-900">
-                {rewards.total.toLocaleString()} <span className="text-lg font-medium">pts</span>
+              <h3 className="text-2xl sm:text-3xl font-black text-slate-900">
+                {rewards.total.toLocaleString()} <span className="text-base sm:text-lg font-medium">pts</span>
               </h3>
             </div>
 
@@ -913,7 +913,7 @@ export default function Dashboard({ onNavigate }: DashboardProps) {
               </div>
 
               {showRankTable && (
-                <div className="absolute top-full mt-3 right-0 bg-white border border-slate-200 shadow-xl rounded-2xl p-4 z-50 w-80">
+                <div className="absolute top-full mt-3 right-0 bg-white border border-slate-200 shadow-xl rounded-2xl p-4 z-50 w-80 max-w-[calc(100vw-2rem)]">
                   <div className="flex justify-between items-start mb-3">
                     <div>
                       <h3 className="font-bold text-slate-800">Membership Tiers</h3>
@@ -999,7 +999,7 @@ export default function Dashboard({ onNavigate }: DashboardProps) {
       </div>
 
       {/* Quick Actions & Chart Area */}
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 md:gap-6">
         {/* Quick Actions */}
         <div className="lg:col-span-4 space-y-4">
           <h4 className="text-lg font-bold text-slate-800">Quick Actions</h4>
@@ -1031,8 +1031,8 @@ export default function Dashboard({ onNavigate }: DashboardProps) {
         </div>
 
         {/* Parking Activity */}
-        <div className="lg:col-span-8 p-6 rounded-2xl bg-white border border-slate-200 shadow-sm">
-          <div className="flex justify-between items-start mb-6 gap-4">
+        <div className="lg:col-span-8 p-5 sm:p-6 rounded-2xl bg-white border border-slate-200 shadow-sm">
+          <div className="flex flex-col sm:flex-row sm:justify-between sm:items-start mb-4 sm:mb-6 gap-3 sm:gap-4">
             <div>
               <h4 className="text-lg font-bold text-slate-800">Parking Activity</h4>
               <p className="text-xs text-slate-400 font-medium mt-1">
@@ -1050,13 +1050,13 @@ export default function Dashboard({ onNavigate }: DashboardProps) {
             <select
               value={activityPeriod}
               onChange={(e) => setActivityPeriod(e.target.value)}
-              className="text-xs font-bold bg-slate-100 border-none rounded-lg px-3 py-1 focus:ring-primary/20"
+              className="self-start sm:self-auto text-xs font-bold bg-slate-100 border-none rounded-lg px-3 py-1.5 focus:ring-primary/20"
             >
               <option value="7">Last 7 Days</option>
               <option value="30">Last 30 Days</option>
             </select>
           </div>
-          <div className="h-56 w-full flex items-end justify-between gap-2">
+          <div className="h-48 sm:h-56 w-full flex items-end justify-between gap-1 sm:gap-2">
             {chartData.length === 0 && isLoading ? (
               Array.from({ length: activityPeriod === '7' ? 7 : 30 }).map((_, i) => (
                 <div key={i} className="flex-1 flex flex-col items-center gap-2 h-full min-w-0">
@@ -1097,8 +1097,8 @@ export default function Dashboard({ onNavigate }: DashboardProps) {
 
       {/* Recent Sessions List */}
       <div className="bg-white border border-slate-200 rounded-2xl overflow-hidden shadow-sm">
-        <div className="p-6 border-b border-slate-100 flex justify-between items-center">
-          <h4 className="text-lg font-bold text-slate-800">Recent Parking Sessions</h4>
+        <div className="p-5 sm:p-6 border-b border-slate-100 flex justify-between items-center">
+          <h4 className="text-base sm:text-lg font-bold text-slate-800">Recent Parking Sessions</h4>
           <button 
             onClick={() => onNavigate && onNavigate('history')}
             className="text-primary text-xs font-bold hover:underline"
@@ -1106,7 +1106,10 @@ export default function Dashboard({ onNavigate }: DashboardProps) {
             View All
           </button>
         </div>
-        <div className="overflow-x-auto">
+        {/* Desktop / tablet: classic table. Mobile (<sm): switch to a stacked
+            card list because a 5-column horizontally-scrolled table is hard
+            to scan one-handed on a phone. */}
+        <div className="hidden sm:block overflow-x-auto">
           <table className="w-full text-left">
             <thead className="bg-slate-50 text-[10px] uppercase tracking-widest font-black text-slate-400">
               <tr>
@@ -1145,6 +1148,33 @@ export default function Dashboard({ onNavigate }: DashboardProps) {
             </tbody>
           </table>
         </div>
+
+        <ul className="sm:hidden divide-y divide-slate-100">
+          {recentSessions.length > 0 ? recentSessions.map((row, i) => (
+            <li key={i} className="p-4 hover:bg-slate-50/50 transition-colors">
+              <div className="flex items-start gap-3">
+                <div className={`size-9 rounded-lg bg-${row.color}-50 text-${row.color}-600 flex items-center justify-center shrink-0`}>
+                  <Building2 size={16} />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-start justify-between gap-2">
+                    <p className="text-sm font-bold text-slate-700 truncate">{row.loc}</p>
+                    <span className="shrink-0 px-2 py-0.5 bg-emerald-100 text-emerald-700 rounded-full text-[10px] font-bold">
+                      {row.status}
+                    </span>
+                  </div>
+                  <p className="text-xs text-slate-500 font-medium mt-0.5">{row.time}</p>
+                  <div className="flex items-center justify-between mt-2 gap-2">
+                    <span className="text-xs text-slate-700 font-bold">{row.dur}</span>
+                    <span className="text-sm text-slate-700 font-black tabular-nums">{row.cost}</span>
+                  </div>
+                </div>
+              </div>
+            </li>
+          )) : (
+            <li className="px-6 py-8 text-center text-slate-500 text-sm">No recent sessions found.</li>
+          )}
+        </ul>
       </div>
 
     </motion.div>

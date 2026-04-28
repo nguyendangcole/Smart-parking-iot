@@ -447,11 +447,11 @@ export default function Payments() {
     <motion.div
       initial={{ opacity: 0, scale: 0.95 }}
       animate={{ opacity: 1, scale: 1 }}
-      className="flex flex-col gap-8"
+      className="flex flex-col gap-6 md:gap-8"
     >
       <header>
-        <h2 className="text-2xl font-bold text-slate-900">Parking & Vehicles</h2>
-        <p className="text-slate-500 text-sm">Manage your parking plans and vehicle information.</p>
+        <h2 className="text-2xl sm:text-3xl font-bold text-slate-900">Parking & Vehicles</h2>
+        <p className="text-slate-500 text-sm sm:text-base">Manage your parking plans and vehicle information.</p>
       </header>
 
       {/* Low-balance alert. Renders only when the member has opted in
@@ -466,24 +466,26 @@ export default function Payments() {
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -8 }}
             transition={{ duration: 0.2 }}
-            className="flex items-center gap-4 p-4 rounded-2xl border border-red-200 bg-red-50/80 shadow-sm"
+            className="flex flex-col sm:flex-row sm:items-center gap-3 sm:gap-4 p-4 rounded-2xl border border-red-200 bg-red-50/80 shadow-sm"
             role="alert"
           >
-            <div className="w-11 h-11 rounded-xl bg-red-100 text-red-600 flex items-center justify-center shrink-0">
-              <AlertCircle size={22} />
-            </div>
-            <div className="flex-1 min-w-0">
-              <p className="text-sm font-bold text-red-700">Low wallet balance</p>
-              <p className="text-xs text-red-600/80">
-                Your balance is{' '}
-                <span className="font-bold">{userBalance.toLocaleString()} VND</span>
-                , below the {LOW_BALANCE_THRESHOLD.toLocaleString()} VND alert threshold. Top up to avoid service interruptions.
-              </p>
+            <div className="flex items-start sm:items-center gap-3 sm:gap-4 flex-1 min-w-0">
+              <div className="w-11 h-11 rounded-xl bg-red-100 text-red-600 flex items-center justify-center shrink-0">
+                <AlertCircle size={22} />
+              </div>
+              <div className="flex-1 min-w-0">
+                <p className="text-sm font-bold text-red-700">Low wallet balance</p>
+                <p className="text-xs text-red-600/80">
+                  Your balance is{' '}
+                  <span className="font-bold">{userBalance.toLocaleString()} VND</span>
+                  , below the {LOW_BALANCE_THRESHOLD.toLocaleString()} VND alert threshold. Top up to avoid service interruptions.
+                </p>
+              </div>
             </div>
             <button
               type="button"
               onClick={() => setShowTopUpDrawer(true)}
-              className="shrink-0 px-4 py-2 rounded-xl bg-red-600 text-white text-sm font-bold hover:bg-red-700 transition-colors shadow-sm"
+              className="shrink-0 px-4 py-2 rounded-xl bg-red-600 text-white text-sm font-bold hover:bg-red-700 transition-colors shadow-sm self-stretch sm:self-auto"
             >
               Top Up Now
             </button>
@@ -491,7 +493,7 @@ export default function Payments() {
         )}
       </AnimatePresence>
 
-      <div className="grid grid-cols-1 xl:grid-cols-3 gap-6">
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Main Plan Card - click anywhere on the card (except the Extend
             button) to open the Subscription Details drawer. The outer
             element is a div-role-button so we can nest a real <button> for
@@ -507,30 +509,31 @@ export default function Payments() {
             }
           }}
           aria-label="View subscription details"
-          className={`group xl:col-span-2 relative overflow-hidden rounded-3xl bg-primary p-8 text-white shadow-2xl shadow-primary/30 cursor-pointer hover:shadow-primary/40 transition-all duration-500 focus:outline-none focus-visible:ring-4 focus-visible:ring-white/40 ${cardGlow ? 'ring-4 ring-emerald-400/60 shadow-emerald-500/40 shadow-3xl' : ''}`}
+          className={`group lg:col-span-2 relative overflow-hidden rounded-3xl bg-primary p-6 sm:p-8 text-white shadow-2xl shadow-primary/30 cursor-pointer hover:shadow-primary/40 transition-all duration-500 focus:outline-none focus-visible:ring-4 focus-visible:ring-white/40 ${cardGlow ? 'ring-4 ring-emerald-400/60 shadow-emerald-500/40 shadow-3xl' : ''}`}
         >
           <div className="absolute top-0 right-0 w-64 h-64 bg-white/10 rounded-full -mr-20 -mt-20 blur-3xl"></div>
-          <div className="absolute top-5 right-5 flex items-center gap-1.5 bg-white/15 group-hover:bg-white/25 backdrop-blur-md border border-white/20 text-white text-[11px] font-bold px-3 py-1.5 rounded-full transition-colors pointer-events-none">
-            View Details
+          <div className="absolute top-4 right-4 sm:top-5 sm:right-5 flex items-center gap-1.5 bg-white/15 group-hover:bg-white/25 backdrop-blur-md border border-white/20 text-white text-[10px] sm:text-[11px] font-bold px-2.5 sm:px-3 py-1 sm:py-1.5 rounded-full transition-colors pointer-events-none">
+            <span className="hidden sm:inline">View Details</span>
+            <span className="sm:hidden">Details</span>
             <ChevronRight size={14} className="group-hover:translate-x-0.5 transition-transform" />
           </div>
           <div className="relative z-10 flex flex-col h-full justify-between">
             <div className="flex justify-between items-start">
-              <div>
-                <p className="text-blue-100 text-sm font-medium mb-1 uppercase tracking-widest">Active Parking Plan</p>
-                <h3 className="text-4xl font-extrabold tracking-tight">
+              <div className="min-w-0 pr-16 sm:pr-20">
+                <p className="text-blue-100 text-xs sm:text-sm font-medium mb-1 uppercase tracking-widest">Active Parking Plan</p>
+                <h3 className="text-2xl sm:text-3xl md:text-4xl font-extrabold tracking-tight break-words">
                   {activePolicy.name || 'Standard Monthly Pass'}
                 </h3>
-                <div className="flex items-center gap-4 mt-4">
-                  <div className="bg-white/20 px-4 py-1.5 rounded-full text-xs font-bold border border-white/10">
+                <div className="flex items-center gap-2 sm:gap-3 mt-4 flex-wrap">
+                  <div className="bg-white/20 px-3 sm:px-4 py-1.5 rounded-full text-[11px] sm:text-xs font-bold border border-white/10 whitespace-nowrap">
                     {profile?.exempt_payment ? 'FREE (Exempted)' : `Price: ${activePolicy.price?.toLocaleString()} VND`}
                   </div>
-                  <div className="bg-white/20 px-4 py-1.5 rounded-full text-xs font-bold border border-white/10">
+                  <div className="bg-white/20 px-3 sm:px-4 py-1.5 rounded-full text-[11px] sm:text-xs font-bold border border-white/10 whitespace-nowrap">
                     Balance: {userBalance.toLocaleString()} VND
                   </div>
                 </div>
-                <p className="text-blue-100/80 text-sm mt-8 flex items-center gap-2">
-                  <Calendar size={16} />
+                <p className="text-blue-100/80 text-xs sm:text-sm mt-6 sm:mt-8 flex items-center gap-2">
+                  <Calendar size={16} className="shrink-0" />
                   <span className="font-semibold">
                     {profile?.package_expires_at
                       ? `Valid until: ${new Date(profile.package_expires_at).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' })}`
@@ -539,14 +542,14 @@ export default function Payments() {
                 </p>
               </div>
             </div>
-            <div className="mt-12">
+            <div className="mt-8 sm:mt-12">
               <button
                 type="button"
                 onClick={(e) => {
                   e.stopPropagation();
                   setShowExtendModal(true);
                 }}
-                className="group/extend w-full bg-white text-primary font-bold py-4 px-6 rounded-2xl flex items-center justify-center gap-3 hover:bg-blue-50 transition-all shadow-lg active:scale-95"
+                className="group/extend w-full bg-white text-primary font-bold py-3.5 sm:py-4 px-6 rounded-2xl flex items-center justify-center gap-3 hover:bg-blue-50 transition-all shadow-lg active:scale-95"
               >
                 <RefreshCw size={20} className="group-hover/extend:rotate-180 transition-transform duration-500" />
                 Extend Plan
@@ -556,7 +559,7 @@ export default function Payments() {
         </div>
 
         {/* QR Quick Renewal Card */}
-        <div className="bg-white rounded-3xl p-6 border border-slate-200 shadow-sm flex flex-col gap-6">
+        <div className="bg-white rounded-3xl p-5 sm:p-6 border border-slate-200 shadow-sm flex flex-col gap-5 sm:gap-6">
           <h3 className="font-bold text-slate-800 flex items-center gap-2">
             <QrCode size={22} className="text-primary" /> Quick Renewal
           </h3>
@@ -585,11 +588,11 @@ export default function Payments() {
         </div>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 md:gap-8">
         {/* Vehicles Section */}
         <section className="flex flex-col gap-4">
-          <div className="flex items-center justify-between">
-            <h3 className="text-xl font-bold text-slate-800">My Vehicles</h3>
+          <div className="flex items-center justify-between gap-2">
+            <h3 className="text-lg sm:text-xl font-bold text-slate-800">My Vehicles</h3>
             <button
               className="px-4 py-1.5 bg-slate-100 text-slate-600 rounded-lg text-sm font-bold hover:bg-primary hover:text-white transition-all"
               onClick={() => {
@@ -663,11 +666,11 @@ export default function Payments() {
 
         {/* Recent Activity Section */}
         <section className="flex flex-col gap-4">
-          <div className="flex items-center justify-between">
-            <h3 className="text-xl font-bold text-slate-800">Recent Activity</h3>
-            <div className="flex items-center gap-3">
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 sm:gap-3">
+            <h3 className="text-lg sm:text-xl font-bold text-slate-800">Recent Activity</h3>
+            <div className="flex items-center gap-2 sm:gap-3 flex-wrap">
               <button
-                className="text-primary text-sm font-bold hover:text-primary-dark transition-colors inline-flex items-center gap-1"
+                className="text-primary text-xs sm:text-sm font-bold hover:text-primary-dark transition-colors inline-flex items-center gap-1"
                 onClick={() => setShowSubscriptionDrawer(true)}
               >
                 Subscription Details
@@ -675,7 +678,7 @@ export default function Payments() {
               </button>
               <span className="text-slate-200">|</span>
               <button
-                className="text-slate-500 text-sm font-bold hover:text-primary transition-colors"
+                className="text-slate-500 text-xs sm:text-sm font-bold hover:text-primary transition-colors"
                 onClick={() => setShowAllHistory(!showAllHistory)}
               >
                 {showAllHistory ? 'Show Less' : 'See Full History'}
